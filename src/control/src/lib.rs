@@ -1,5 +1,8 @@
 #![no_std]
 
+use fixed::types::I7F9;
+use fixed::traits::LossyInto;
+
 // Temperature in degrees celcius
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
 pub struct Temperature(i16);
@@ -7,7 +10,7 @@ pub struct Temperature(i16);
 // Electricity price in cents per kWh
 // Can be negative .. that happens, sometimes
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
-pub struct ElectricityPrice(i16);
+pub struct ElectricityPrice(I7F9);
 
 pub struct CoreConfig {
     // Minimam allowed temperature set point if heating is on
@@ -45,14 +48,15 @@ pub fn select_temperature(
     config: &CoreConfig,
     current_price: ElectricityPrice,
 ) -> Temperature {
-    let price_difference: f64 = (config.maximum_price.0 - current_price.0) as f64;
+    let price_difference = config.maximum_price.0 - current_price.0;
 
-    let scaling_factor = price_difference / config.maximum_price.0 as f64;
+    let scaling_factor = price_difference / config.maximum_price.0;
 
     let temperature_range = config.maximum_temperature.0 - config.minimum_temperature.0;
-    let temperature_delta = (temperature_range as f64) * scaling_factor;
+    let temperature_delta: I7F9 = temperature_range * scaling_factor;
 
-    let set_temperature = config.minimum_temperature.0 + (temperature_delta as i16);
+    let native_delta: i16 = temperature_delta.lossy_into();
+    let set_temperature = config.minimum_temperature.0 + native_delta;
 
     Temperature(set_temperature)
 }
@@ -93,12 +97,12 @@ mod tests {
 
     #[test]
     fn test_select_temperature_zero_price() {
-        let electricity_price = ElectricityPrice(0);
+        let electricity_price = ElectricityPrice(I7F9::lit("0"));
         let settings = CoreConfig {
             minimum_temperature: Temperature(15),
             maximum_temperature: Temperature(22),
             turbo_temperature: Temperature(30),
-            maximum_price: ElectricityPrice(30),
+            maximum_price: ElectricityPrice(I7F9::lit("0.30")),
         };
         let set_temperature = select_temperature(&settings, electricity_price);
         assert_eq!(set_temperature, settings.maximum_temperature);
@@ -106,12 +110,12 @@ mod tests {
 
     #[test]
     fn test_select_temperature_low_price() {
-        let electricity_price = ElectricityPrice(5);
+        let electricity_price = ElectricityPrice(I7F9::lit("0.05"));
         let settings = CoreConfig {
             minimum_temperature: Temperature(15),
             maximum_temperature: Temperature(22),
             turbo_temperature: Temperature(30),
-            maximum_price: ElectricityPrice(30),
+            maximum_price: ElectricityPrice(I7F9::lit("0.30")),
         };
         let set_temperature = select_temperature(&settings, electricity_price);
         assert_eq!(set_temperature, Temperature(20));
@@ -119,12 +123,12 @@ mod tests {
 
     #[test]
     fn test_select_temperature_max_price() {
-        let electricity_price = ElectricityPrice(30);
+        let electricity_price = ElectricityPrice(I7F9::lit("0.30"));
         let settings = CoreConfig {
             minimum_temperature: Temperature(15),
             maximum_temperature: Temperature(20),
             turbo_temperature: Temperature(30),
-            maximum_price: ElectricityPrice(30),
+            maximum_price: ElectricityPrice(I7F9::lit("0.30")),
         };
         let set_temperature = select_temperature(&settings, electricity_price);
         assert_eq!(set_temperature, settings.minimum_temperature);
@@ -132,7 +136,7 @@ mod tests {
 
     #[test]
     fn test_get_desired_state_low_price() {
-        let electricity_price = ElectricityPrice(5);
+        let electricity_price = ElectricityPrice(I7F9::lit("0.05"));
         let current_state = State {
             power: PowerState::On,
             temperature: Temperature(18),
@@ -141,7 +145,7 @@ mod tests {
             minimum_temperature: Temperature(15),
             maximum_temperature: Temperature(22),
             turbo_temperature: Temperature(30),
-            maximum_price: ElectricityPrice(30),
+            maximum_price: ElectricityPrice(I7F9::lit("0.30")),
         };
         let result =
             desired_state(&current_state, &settings, electricity_price);
@@ -154,7 +158,7 @@ mod tests {
 
     #[test]
     fn test_get_desired_state_high_price() {
-        let electricity_price = ElectricityPrice(120);
+        let electricity_price = ElectricityPrice(I7F9::lit("1.20"));
         let current_state = State {
             power: PowerState::On,
             temperature: Temperature(18),
@@ -163,7 +167,7 @@ mod tests {
             minimum_temperature: Temperature(15),
             maximum_temperature: Temperature(22),
             turbo_temperature: Temperature(30),
-            maximum_price: ElectricityPrice(30),
+            maximum_price: ElectricityPrice(I7F9::lit("0.30")),
         };
         let result =
             desired_state(&current_state, &settings, electricity_price);
@@ -176,7 +180,7 @@ mod tests {
 
     #[test]
     fn test_get_desired_state_low_temperature() {
-        let electricity_price = ElectricityPrice(120);
+        let electricity_price = ElectricityPrice(I7F9::lit("1.20"));
         let current_state = State {
             power: PowerState::On,
             temperature: Temperature(12),
@@ -185,7 +189,7 @@ mod tests {
             minimum_temperature: Temperature(15),
             maximum_temperature: Temperature(22),
             turbo_temperature: Temperature(30),
-            maximum_price: ElectricityPrice(30),
+            maximum_price: ElectricityPrice(I7F9::lit("0.30")),
         };
         let result =
             desired_state(&current_state, &settings, electricity_price);
