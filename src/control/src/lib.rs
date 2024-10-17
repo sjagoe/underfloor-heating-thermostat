@@ -1,7 +1,5 @@
 #![no_std]
 
-use anyhow::Result;
-
 // Temperature in degrees celcius
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
 pub struct Temperature(i16);
@@ -63,33 +61,30 @@ pub fn desired_state(
     current_state: &State,
     config: &CoreConfig,
     current_price: ElectricityPrice,
-) -> Result<SetPoint> {
+) -> SetPoint {
     // Temperature below our low point
     if current_state.temperature < config.minimum_temperature {
         // Turn on heating high to recover low point
-        let point = SetPoint {
+        return SetPoint {
             power: PowerState::On,
             temperature: config.turbo_temperature,
         };
-        return Ok(point);
     }
 
     // Electricity price too high
     if current_price > config.maximum_price {
         // Turn on heating high to recover low point
-        let point = SetPoint {
+        return SetPoint {
             power: PowerState::Off,
             temperature: config.minimum_temperature,
         };
-        return Ok(point);
     }
 
     let set_temperature = select_temperature(config, current_price);
-    let state = SetPoint {
+    SetPoint {
         power: PowerState::On,
         temperature: set_temperature,
-    };
-    Ok(state)
+    }
 }
 
 #[cfg(test)]
@@ -149,7 +144,7 @@ mod tests {
             maximum_price: ElectricityPrice(30),
         };
         let result =
-            desired_state(&current_state, &settings, electricity_price).expect("should work");
+            desired_state(&current_state, &settings, electricity_price);
         let expected = SetPoint {
             power: PowerState::On,
             temperature: Temperature(20),
@@ -171,7 +166,7 @@ mod tests {
             maximum_price: ElectricityPrice(30),
         };
         let result =
-            desired_state(&current_state, &settings, electricity_price).expect("should work");
+            desired_state(&current_state, &settings, electricity_price);
         let expected = SetPoint {
             power: PowerState::Off,
             temperature: settings.minimum_temperature,
@@ -193,7 +188,7 @@ mod tests {
             maximum_price: ElectricityPrice(30),
         };
         let result =
-            desired_state(&current_state, &settings, electricity_price).expect("should work");
+            desired_state(&current_state, &settings, electricity_price);
         let expected = SetPoint {
             power: PowerState::On,
             temperature: settings.turbo_temperature,
