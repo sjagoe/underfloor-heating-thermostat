@@ -75,6 +75,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "control"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+]
+
+[[package]]
 name = "critical-section"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

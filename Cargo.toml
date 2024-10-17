@@ -2,11 +2,13 @@
 resolver = "2"
 
 members = [
+    "src/control",
     "src/ntc-measurement",
     "src/main",
 ]
 
 [workspace.dependencies]
+anyhow = { version = "1.0.89", default-features = false }
 
 [profile.dev]
 # Rust debug is too slow.
