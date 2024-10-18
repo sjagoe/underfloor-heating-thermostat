@@ -66,6 +66,38 @@ pub fn voltage_to_resistance(v_supply: f32, sample: f32, reference_reistance: f3
     (sample * reference_reistance) / (v_supply - sample)
 }
 
+pub fn temperature_from_voltage(v_supply: f32, sample: f32, reference_reistance: f32) -> f32 {
+    // NTC temperature (Kelvin) given resistance and beta value
+    //
+    //                     1
+    // t2 =  ------------------------------
+    //           ln(rNtc / r1)        1
+    //           --------------  +  ----
+    //               beta            t1
+
+    // Voltage divider for resistance from voltage
+    // rNtc = R2 = (Vr2 * R1) / (Vcc - Vr2)
+
+    // Substiting
+
+    //                     1
+    // t2 =  ---------------------------------------------------
+    //           ln((Vr2 * R1) / (Vcc - Vr2) / r1)       1
+    //           ----------------------------------  +  ----
+    //               beta                                t1
+
+    //                     1
+    // t2 =  ------------------------------------
+    //           ln(Vr2 / (Vcc - Vr2))       1
+    //           ----------------------  +  ----
+    //               beta                    t1
+
+    let a = sample / (v_supply - sample);
+    let b = a.ln() / THERMISTOR_PROPERTIES.beta;
+    let c = b + (1.0 / (THERMISTOR_PROPERTIES.t1 + KELVIN_OFFSET));
+    (1.0 / c) - KELVIN_OFFSET
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -105,5 +137,33 @@ mod tests {
 
         let r = voltage_to_resistance(vcc, 4000.0, r1);
         assert_eq!(r, 48000.0);
+    }
+
+    #[test]
+    fn test_voltage_to_temperature() {
+        let vcc = 5000.0;
+        let r1 = 12_000.0;
+        let r2 = voltage_to_resistance(vcc, 1000.0, r1);
+        let temperature = temperature_from_resistance(r2);
+        assert!(temperature > 61.9);
+        assert!(temperature < 61.95);
+
+        let r2 = voltage_to_resistance(vcc, 4000.0, r1);
+        let temperature = temperature_from_resistance(r2);
+        assert!(temperature < 4.575);
+        assert!(temperature > -4.625);
+    }
+
+    #[test]
+    fn test_voltage_to_temperature_direct() {
+        let vcc = 5000.0;
+        let r1 = 12_000.0;
+        let temperature = temperature_from_voltage(vcc, 1000.0, r1);
+        assert!(temperature > 61.9);
+        assert!(temperature < 61.95);
+
+        let temperature = temperature_from_voltage(vcc, 4000.0, r1);
+        assert!(temperature < 4.575);
+        assert!(temperature > -4.625);
     }
 }
