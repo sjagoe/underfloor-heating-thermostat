@@ -66,7 +66,7 @@ pub fn voltage_to_resistance(v_supply: f32, sample: f32, reference_reistance: f3
     (sample * reference_reistance) / (v_supply - sample)
 }
 
-pub fn temperature_from_voltage(v_supply: f32, sample: f32, reference_reistance: f32) -> f32 {
+pub fn temperature_from_voltage(v_supply: f32, sample: f32) -> f32 {
     // NTC temperature (Kelvin) given resistance and beta value
     //
     //                     1
@@ -157,12 +157,11 @@ mod tests {
     #[test]
     fn test_voltage_to_temperature_direct() {
         let vcc = 5000.0;
-        let r1 = 12_000.0;
-        let temperature = temperature_from_voltage(vcc, 1000.0, r1);
+        let temperature = temperature_from_voltage(vcc, 1000.0);
         assert!(temperature > 61.9);
         assert!(temperature < 61.95);
 
-        let temperature = temperature_from_voltage(vcc, 4000.0, r1);
+        let temperature = temperature_from_voltage(vcc, 4000.0);
         assert!(temperature < 4.575);
         assert!(temperature > -4.625);
     }
