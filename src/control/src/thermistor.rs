@@ -37,6 +37,34 @@ pub fn temperature_from_resistance(r2: f32) -> f32 {
     t2 - KELVIN_OFFSET
 }
 
+pub fn voltage_to_resistance(v_supply: f32, sample: f32, reference_reistance: f32) -> f32 {
+    //
+    // Vcc *--
+    //       |
+    //      R1
+    //       |---- Vout
+    //      R2
+    //       |
+    // GND *--
+    //
+    // Vcc = Vr1 + Vr2
+    //
+    // I = Vcc / (R1 + R2)
+    //
+    // Ir2 = Vr2 / R2 = Vcc / (R1 + R2)
+    //
+    // Vr2 = (Vcc * R2) / (R1 + R2)
+    //
+    // Vr2 * R1 + Vr2 * R2 = Vcc * R2
+    //
+    // Vcc * R2 - Vr2 * R2 = Vr2 * R1
+    //
+    // R2 (Vcc - Vr2) = Vr2 * R1
+    //
+    // R2 = (Vr2 * R1) / (Vcc - Vr2)
+
+    (sample * reference_reistance) / (v_supply - sample)
+}
 
 #[cfg(test)]
 mod tests {
@@ -62,5 +90,20 @@ mod tests {
         let t2 = temperature_from_resistance(958.0);
         assert!(t2 > 99.95);
         assert!(t2 < 100.0);
+    }
+
+    #[test]
+    fn test_voltage_to_resistance() {
+        let vcc = 5000.0;
+        let r1 = 12_000.0;
+        // 50% voltage divider
+        let r = voltage_to_resistance(vcc, 2500.0, r1);
+        assert_eq!(r, 12_000.0);
+
+        let r = voltage_to_resistance(vcc, 1000.0, r1);
+        assert_eq!(r, 3000.0);
+
+        let r = voltage_to_resistance(vcc, 4000.0, r1);
+        assert_eq!(r, 48000.0);
     }
 }
