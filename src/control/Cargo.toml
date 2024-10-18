@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 anyhow = { workspace = true, default-features = false }
 fixed = "1.28.0"
+micromath = "2.1.0"

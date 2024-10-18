@@ -5,6 +5,7 @@ use fixed::traits::LossyInto;
 
 mod config;
 mod state;
+mod thermistor;
 
 use config::*;
 use state::*;
