@@ -1,36 +1,27 @@
 [package]
-name = "waveplus-nostd"
+name = "underfloor-heating"
 version = "0.1.0"
 authors = ["Simon Jagoe <simon@simonjagoe.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
+[features]
+default = ["std", "embassy", "esp-idf-svc/native"]
+
+pio = ["esp-idf-svc/pio"]
+std = ["alloc", "esp-idf-svc/binstart", "esp-idf-svc/std"]
+alloc = ["esp-idf-svc/alloc"]
+nightly = ["esp-idf-svc/nightly"]
+experimental = ["esp-idf-svc/experimental"]
+embassy = ["esp-idf-svc/embassy-sync", "esp-idf-svc/critical-section", "esp-idf-svc/embassy-time-driver"]
+
 [dependencies]
-esp-backtrace = { version = "0.14.2", features = [
-    "esp32c6",
-    "exception-handler",
-    "panic-handler",
-    "println",
-] }
-esp-hal = { version = "0.21.0", features = [ "esp32c6" ] }
-esp-println = { version = "0.12.0", features = ["esp32c6", "log"] }
-log = { version = "0.4.22" }
-embedded-io = "0.6.1"
-esp-wifi = { version = "0.10.1", features = [
-    "esp32c6",
-    "phy-enable-usb",
-    "utils",
-    "wifi",
-] }
-heapless = { version = "0.8.0", default-features = false }
-smoltcp = { version = "0.11.0", default-features = false, features = [
-    "medium-ethernet",
-    "proto-dhcpv4",
-    "proto-igmp",
-    "proto-ipv4",
-    "socket-dhcpv4",
-    "socket-icmp",
-    "socket-raw",
-    "socket-tcp",
-    "socket-udp",
-] }
+log = { version = "0.4", default-features = false }
+esp-idf-svc = { version = "0.49", default-features = false, features = ["alloc", "embassy-sync"] }
+anyhow      =  { workspace = true }
+rgb         = "0.8.29"
+rand = "0.8.5"
+fixed = "1.28.0"
+
+[build-dependencies]
+embuild = "0.32.0"

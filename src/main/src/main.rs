@@ -1,28 +1,30 @@
-#![no_std]
-#![no_main]
+use anyhow::Result;
+use esp_idf_svc::{
+    eventloop::EspSystemEventLoop,
+    hal::prelude::Peripherals,
+};
 
-use esp_backtrace as _;
-use esp_hal::{delay::Delay, prelude::*};
+mod rgbled;
 
-#[entry]
-fn main() -> ! {
-    #[allow(unused)]
-    let peripherals = esp_hal::init(esp_hal::Config::default());
-    let delay = Delay::new();
+use rgbled::{RGB8, WS2812RMT};
 
-    esp_println::logger::init_logger_from_env();
+fn main() -> Result<()> {
+    // It is necessary to call this function once. Otherwise some patches to the runtime
+    // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
+    esp_idf_svc::sys::link_patches();
 
-    let timg0 = esp_hal::timer::timg::TimerGroup::new(peripherals.TIMG0);
-let _init = esp_wifi::init(
-    esp_wifi::EspWifiInitFor::Wifi,
-    timg0.timer0,
-    esp_hal::rng::Rng::new(peripherals.RNG),
-    peripherals.RADIO_CLK,
-)
-.unwrap();
+    // Bind the log crate to the ESP Logging facilities
+    esp_idf_svc::log::EspLogger::initialize_default();
+
+    let peripherals = Peripherals::take().unwrap();
+
+    // Start the LED off yellow
+    let mut led = WS2812RMT::new(peripherals.pins.gpio8, peripherals.rmt.channel0)?;
+    led.set_pixel(RGB8::new(10, 10, 0))?;
+
+    let sysloop = EspSystemEventLoop::take()?;
 
     loop {
-        log::info!("Hello world!");
-        delay.delay(500.millis());
+        std::thread::sleep(std::time::Duration::from_millis(250));
     }
 }
