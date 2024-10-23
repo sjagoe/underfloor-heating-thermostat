@@ -19,6 +19,20 @@ use measurement::{read_temperature, MeasurementEvent};
 use rgbled::{RGB8, WS2812RMT};
 use status::Status;
 
+pub struct Config {
+    measurement_interval: Duration,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            // fixme, we should measure every few minutes at most
+            measurement_interval: Duration::from_secs(1),
+        }
+    }
+}
+
+
 fn main() -> Result<()> {
     // It is necessary to call this function once. Otherwise some patches to the runtime
     // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
@@ -52,7 +66,6 @@ fn main() -> Result<()> {
             let _temperature = read_temperature(&sysloop, &mut thermistor_enable);
         })?
     };
-    callback_timer.every(Duration::from_secs(1))?;
 
     let _measurement_handler = {
         let localloop = sysloop.clone();
@@ -69,6 +82,10 @@ fn main() -> Result<()> {
         let colour = RGB8::from(event);
         led.set_pixel(colour).expect("Failed to set LED colour");
     })?;
+
+    let config = Config::default();
+
+    callback_timer.every(config.measurement_interval)?;
 
     loop {
         delay::FreeRtos::delay_ms(250);
