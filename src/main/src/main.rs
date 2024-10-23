@@ -29,6 +29,7 @@ use control::{
 
 pub struct Config {
     measurement_interval: Duration,
+    fake_electricity_price: ElectricityPrice,
     set_points: CoreConfig,
 }
 
@@ -37,6 +38,7 @@ impl Default for Config {
         Config {
             // fixme, we should measure every few minutes at most
             measurement_interval: Duration::from_secs(1),
+            fake_electricity_price: ElectricityPrice::new(0.20),
             set_points: CoreConfig {
                 minimum_temperature: Temperature::new(15.0),
                 maximum_temperature: Temperature::new(22.0),
@@ -89,12 +91,12 @@ fn main() -> Result<()> {
         // Avoid move of sysloop into closure
         let localloop = sysloop.clone();
         let set_points = config.set_points;
+        let price = config.fake_electricity_price;
         sysloop.subscribe::<MeasurementEvent, _>(move |event| {
             localloop.post::<StatusEvent>(&StatusEvent::Ready, delay::BLOCK).expect("failed to post status");
             match event.value() {
                 Ok(value) => {
                     info!("Received event {:?}: {:?}", event, value);
-                    let price = ElectricityPrice::new(0.20);
                     let heating_event = get_next_desired_state(&set_points, value, price);
                     localloop.post::<HeatingEvent>(&heating_event, delay::BLOCK).expect("failed to post heating event");
                 }
