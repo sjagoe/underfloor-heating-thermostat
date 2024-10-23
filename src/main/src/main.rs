@@ -1,4 +1,5 @@
 use anyhow::Result;
+use core::time::Duration;
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
     hal::{
@@ -6,6 +7,7 @@ use esp_idf_svc::{
         gpio::{AnyOutputPin, PinDriver},
         prelude::Peripherals,
     },
+    timer::EspTaskTimerService,
 };
 use log::*;
 
@@ -25,10 +27,6 @@ fn main() -> Result<()> {
 
     let peripherals = Peripherals::take().unwrap();
 
-    // Start the LED off yellow
-    let mut led = WS2812RMT::new(peripherals.pins.gpio8, peripherals.rmt.channel0)?;
-    led.set_pixel(RGB8::new(10, 10, 0))?;
-
     let thermistor_enable_pin: AnyOutputPin = peripherals.pins.gpio10.into();
     let mut thermistor_enable = PinDriver::output(thermistor_enable_pin)?;
     thermistor_enable.set_low()?;
@@ -37,7 +35,21 @@ fn main() -> Result<()> {
     let mut heating_enable = PinDriver::output(heating_enable_pin)?;
     heating_enable.set_low()?;
 
+    let mut led = WS2812RMT::new(peripherals.pins.gpio8, peripherals.rmt.channel0)?;
+    led.set_pixel(RGB8::new(10, 10, 0))?;
+
     let sysloop = EspSystemEventLoop::take()?;
+    let timer_service = EspTaskTimerService::new()?;
+    let callback_timer = {
+        // Avoid move of sysloop into closure
+        let localloop = sysloop.clone();
+        timer_service.timer(move || {
+            info!("Measuring temperature");
+            let sysloop = localloop.clone();
+            let _temperature = read_temperature(&sysloop, &mut thermistor_enable);
+        })?
+    };
+    callback_timer.every(Duration::from_secs(1))?;
 
     let _sub = sysloop.subscribe::<MeasurementEvent, _>(|event| {
         match event.value() {
@@ -49,7 +61,6 @@ fn main() -> Result<()> {
     loop {
         led.set_pixel(RGB8::new(0, 0, 10))?;
         FreeRtos::delay_ms(250);
-        let _temperature = read_temperature(&sysloop, &mut thermistor_enable);
         led.set_pixel(RGB8::new(0, 10, 0))?;
         FreeRtos::delay_ms(250);
     }
