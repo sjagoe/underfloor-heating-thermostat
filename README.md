@@ -3,7 +3,7 @@
 Automatically contol a single underfloor heating zone based on
 programmed parameters.
 
-## Features
+## Planned Features
 
 1. Read hourly electricity price from an influxdb database
 2. Increase heating when price is low, to a limit
