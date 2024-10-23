@@ -14,7 +14,7 @@ mod event;
 
 pub use event::MeasurementEvent;
 
-pub fn with_thermistor(enable: &mut PinDriver<AnyOutputPin, Output>, read: fn() -> Result<f32>) -> Result<f32> {
+pub fn with_thermistor(enable: &mut PinDriver<AnyOutputPin, Output>, read: impl Fn() -> Result<f32>) -> Result<f32> {
     enable.set_high().or_else(|err| {
         enable.set_low().expect("Unable to enable thermistor");
         Err(err)
@@ -33,13 +33,13 @@ pub fn with_thermistor(enable: &mut PinDriver<AnyOutputPin, Output>, read: fn() 
     }
 }
 
-pub fn read_temperature(enable: &mut PinDriver<AnyOutputPin, Output>) -> Result<MeasurementEvent> {
+pub fn read_temperature(enable: &mut PinDriver<AnyOutputPin, Output>, fake_voltage: f32) -> Result<MeasurementEvent> {
     let thermistor_voltage = with_thermistor(enable, || {
-        Ok(1500.0)
+        Ok(fake_voltage)
     })?;
 
     // fixme
-    let adc_reference_voltage = 4000.0;
+    let adc_reference_voltage = 3300.0;
 
     let temperature = temperature_from_voltage(adc_reference_voltage, thermistor_voltage);
     let event = MeasurementEvent::Measurement(Temperature::new(temperature));

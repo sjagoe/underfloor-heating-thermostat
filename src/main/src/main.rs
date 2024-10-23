@@ -3,9 +3,15 @@ use core::time::Duration;
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
     hal::{
+        adc::{
+            attenuation::DB_11,
+            oneshot::config::AdcChannelConfig,
+            oneshot::*,
+        },
         delay,
         gpio::{AnyOutputPin, PinDriver},
         prelude::Peripherals,
+        peripheral::Peripheral,
     },
     timer::EspTaskTimerService,
 };
@@ -58,7 +64,7 @@ fn main() -> Result<()> {
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    let peripherals = Peripherals::take().unwrap();
+    let mut peripherals = Peripherals::take().unwrap();
 
     let thermistor_enable_pin: AnyOutputPin = peripherals.pins.gpio10.into();
     let mut thermistor_enable = PinDriver::output(thermistor_enable_pin)?;
@@ -82,7 +88,24 @@ fn main() -> Result<()> {
             let sysloop = localloop.clone();
             sysloop.post::<StatusEvent>(&StatusEvent::Collecting, delay::BLOCK).expect("Failed to post status");
             info!("Measuring temperature");
-            let temperature = read_temperature(&mut thermistor_enable).expect("Failed to read temperature");
+
+            // Only way I could find to use the ADC in this closure is
+            // to use unsafe clone
+            let adc_peripheral = unsafe { peripherals.adc1.clone_unchecked() };
+            let gpio2 = unsafe { peripherals.pins.gpio2.clone_unchecked() };
+
+            let adc = AdcDriver::new(adc_peripheral).expect("fuck");
+            let adc_config = AdcChannelConfig {
+                attenuation: DB_11, // Allegedly a range up to 3.6V
+                calibration: true,
+                ..Default::default()
+            };
+            let mut adc_pin = AdcChannelDriver::new(&adc, gpio2, &adc_config).expect("fuck");
+
+            let value = adc.read(&mut adc_pin).expect("Failed to read from adc");
+            warn!("read adc value {:?} -> {:?}", value, f32::from(value));
+
+            let temperature = read_temperature(&mut thermistor_enable, value.into()).expect("Failed to read temperature");
             localloop.post::<MeasurementEvent>(&temperature, delay::BLOCK).unwrap();
         })?
     };
