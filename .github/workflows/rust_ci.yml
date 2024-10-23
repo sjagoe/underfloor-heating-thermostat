@@ -38,7 +38,8 @@ jobs:
           components: rust-src, rustfmt, clippy
       - name: Enable caching
         uses: Swatinem/rust-cache@v2
+      - name: Install ldproxy
+        if: command == "build"
+        run: cargo install ldproxy
       - name: Run command
-        run: |
-          cargo install ldproxy
-          cargo ${{ matrix.action.command }} ${{ matrix.action.args }}
+        run: cargo ${{ matrix.action.command }} ${{ matrix.action.args }}
