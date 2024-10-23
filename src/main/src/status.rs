@@ -22,7 +22,7 @@ impl From<Status> for RGB8 {
 unsafe impl EspEventSource for Status {
     fn source() -> Option<&'static CStr> {
         // String should be unique across the whole project and ESP IDF
-        Some(CStr::from_bytes_with_nul(b"DEMO-SERVICE\0").unwrap())
+        Some(CStr::from_bytes_with_nul(b"STATUS-EVENT\0").unwrap())
     }
 }
 
