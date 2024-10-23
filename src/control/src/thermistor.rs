@@ -14,6 +14,7 @@ static THERMISTOR_PROPERTIES: ThermistorProperties = ThermistorProperties {
     t1: 25.0,
 };
 
+#[allow(dead_code)]
 pub fn temperature_from_resistance(r2: f32) -> f32 {
     //                     1
     // t2 =  ------------------------------
@@ -37,6 +38,7 @@ pub fn temperature_from_resistance(r2: f32) -> f32 {
     t2 - KELVIN_OFFSET
 }
 
+#[allow(dead_code)]
 pub fn voltage_to_resistance(v_supply: f32, sample: f32, reference_reistance: f32) -> f32 {
     //
     // Vcc *--

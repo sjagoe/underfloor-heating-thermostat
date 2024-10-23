@@ -11,7 +11,9 @@ pub enum HeatingPower {
 
 #[derive(Debug, Clone, Copy)]
 pub struct HeatingEvent {
+    #[allow(dead_code)]
     power: HeatingPower,
+    #[allow(dead_code)]
     temperature: Temperature,
 }
 
