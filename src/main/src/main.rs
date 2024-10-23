@@ -51,7 +51,7 @@ fn main() -> Result<()> {
     };
     callback_timer.every(Duration::from_secs(1))?;
 
-    let _sub = sysloop.subscribe::<MeasurementEvent, _>(|event| {
+    let _sub = sysloop.subscribe::<MeasurementEvent, _>(move |event| {
         match event.value() {
             Ok(value) => info!("Received event {:?}: {:?}", event, value),
             Err(err) => error!("Received bad event {:?}: {:?}", event, err),
