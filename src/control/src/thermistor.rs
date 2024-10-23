@@ -25,15 +25,15 @@ pub fn temperature_from_resistance(r2: f32) -> f32 {
     let r1 = THERMISTOR_PROPERTIES.r1;
 
     if r1 == r2 {
-        return THERMISTOR_PROPERTIES.t1 as f32;
+        return THERMISTOR_PROPERTIES.t1;
     }
 
     let beta = THERMISTOR_PROPERTIES.beta;
-    let t1: f32 = (THERMISTOR_PROPERTIES.t1 as f32) + KELVIN_OFFSET;
+    let t1: f32 = THERMISTOR_PROPERTIES.t1 + KELVIN_OFFSET;
 
-    let resistance_ratio: f32 = (r2 as f32) / (r1 as f32);
+    let resistance_ratio = r2 / r1;
 
-    let t2: f32 = 1.0 / ((resistance_ratio.ln() / beta) + (1.0 / t1));
+    let t2 = 1.0 / ((resistance_ratio.ln() / beta) + (1.0 / t1));
 
     t2 - KELVIN_OFFSET
 }
