@@ -2,13 +2,15 @@ use anyhow::Result;
 use core::ffi::CStr;
 use esp_idf_svc::eventloop::*;
 
+use control::Temperature;
+
 #[derive(Copy, Clone, Debug)]
 pub enum MeasurementEvent {
-    Measurement(f32),
+    Measurement(Temperature),
 }
 
 impl MeasurementEvent {
-    pub fn value(&self) -> Result<f32> {
+    pub fn value(&self) -> Result<Temperature> {
         match self {
             MeasurementEvent::Measurement(value) => Ok(*value),
         }

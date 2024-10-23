@@ -95,7 +95,7 @@ fn main() -> Result<()> {
                 Ok(value) => {
                     info!("Received event {:?}: {:?}", event, value);
                     let price = ElectricityPrice::new(0.20);
-                    let heating_event = get_next_desired_state(&set_points, Temperature::new(value), price);
+                    let heating_event = get_next_desired_state(&set_points, value, price);
                     localloop.post::<HeatingEvent>(&heating_event, delay::BLOCK).expect("failed to post heating event");
                 }
                 Err(err) => error!("Received bad event {:?}: {:?}", event, err),

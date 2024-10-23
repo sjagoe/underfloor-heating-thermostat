@@ -8,7 +8,7 @@ use esp_idf_svc::hal::{
     },
 };
 
-use control::temperature_from_voltage;
+use control::{temperature_from_voltage, Temperature};
 
 mod event;
 
@@ -42,7 +42,7 @@ pub fn read_temperature(enable: &mut PinDriver<AnyOutputPin, Output>) -> Result<
     let adc_reference_voltage = 4000.0;
 
     let temperature = temperature_from_voltage(adc_reference_voltage, thermistor_voltage);
-    let event = MeasurementEvent::Measurement(temperature);
+    let event = MeasurementEvent::Measurement(Temperature::new(temperature));
 
     Ok(event)
 }
