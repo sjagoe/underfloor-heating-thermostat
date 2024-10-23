@@ -88,6 +88,7 @@ fn main() -> Result<()> {
     callback_timer.every(config.measurement_interval)?;
 
     loop {
+        // fixme we should go into a low-power state until reacting to an event
         delay::FreeRtos::delay_ms(250);
     }
 }
