@@ -3,7 +3,6 @@ resolver = "2"
 
 members = [
     "src/control",
-    "src/ntc-measurement",
     "src/main",
 ]
 default-members = ["src/main"]
