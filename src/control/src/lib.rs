@@ -5,7 +5,7 @@ mod state;
 mod thermistor;
 
 pub use config::CoreConfig;
-pub use state::{ElectricityPrice, PowerState, State, Temperature};
+pub use state::{ElectricityPrice, PowerState, Temperature};
 pub use thermistor::temperature_from_voltage;
 
 pub fn select_temperature(
@@ -25,40 +25,48 @@ pub fn select_temperature(
     Temperature::new(set_temperature)
 }
 
-pub fn desired_state(
-    config: &CoreConfig,
-    current_temperature: Temperature,
-    current_price: ElectricityPrice,
-) -> State {
-    if current_temperature > config.turbo_temperature {
-        return State {
-            power: PowerState::Off,
-            temperature: config.minimum_temperature,
-        };
-    }
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct State {
+    pub power: PowerState,
+    pub temperature: Temperature,
+}
 
-    // Temperature below our low point
-    if current_temperature < config.minimum_temperature {
-        // Turn on heating high to recover low point
-        return State {
+impl State {
+    pub fn from_current_state(
+        config: &CoreConfig,
+        current_temperature: Temperature,
+        current_price: ElectricityPrice,
+    ) -> State {
+        if current_temperature > config.turbo_temperature {
+            return State {
+                power: PowerState::Off,
+                temperature: config.minimum_temperature,
+            };
+        }
+
+        // Temperature below our low point
+        if current_temperature < config.minimum_temperature {
+            // Turn on heating high to recover low point
+            return State {
+                power: PowerState::On,
+                temperature: config.turbo_temperature,
+            };
+        }
+
+        // Electricity price too high
+        if current_price > config.maximum_price {
+            // Turn on heating high to recover low point
+            return State {
+                power: PowerState::Off,
+                temperature: config.minimum_temperature,
+            };
+        }
+
+        let set_temperature = select_temperature(config, current_price);
+        State {
             power: PowerState::On,
-            temperature: config.turbo_temperature,
-        };
-    }
-
-    // Electricity price too high
-    if current_price > config.maximum_price {
-        // Turn on heating high to recover low point
-        return State {
-            power: PowerState::Off,
-            temperature: config.minimum_temperature,
-        };
-    }
-
-    let set_temperature = select_temperature(config, current_price);
-    State {
-        power: PowerState::On,
-        temperature: set_temperature,
+            temperature: set_temperature,
+        }
     }
 }
 
@@ -120,7 +128,7 @@ mod tests {
             maximum_price: ElectricityPrice::new(0.30),
         };
         let result =
-            desired_state(&settings, current_temperature, electricity_price);
+            State::from_current_state(&settings, current_temperature, electricity_price);
 
         assert_eq!(result.power, PowerState::On);
         let min = Temperature::new(20.8);
@@ -140,7 +148,7 @@ mod tests {
             maximum_price: ElectricityPrice::new(0.30),
         };
         let result =
-            desired_state(&settings, current_temperature, electricity_price);
+            State::from_current_state(&settings, current_temperature, electricity_price);
         let expected = State {
             power: PowerState::Off,
             temperature: settings.minimum_temperature,
@@ -159,7 +167,7 @@ mod tests {
             maximum_price: ElectricityPrice::new(0.30),
         };
         let result =
-            desired_state(&settings, current_temperature, electricity_price);
+            State::from_current_state(&settings, current_temperature, electricity_price);
         let expected = State {
             power: PowerState::On,
             temperature: settings.turbo_temperature,
@@ -178,7 +186,7 @@ mod tests {
             maximum_price: ElectricityPrice::new(0.30),
         };
         let result =
-            desired_state(&settings, current_temperature, electricity_price);
+            State::from_current_state(&settings, current_temperature, electricity_price);
         let expected = State {
             power: PowerState::Off,
             temperature: settings.minimum_temperature,

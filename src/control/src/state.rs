@@ -36,9 +36,3 @@ pub enum PowerState {
     On,
     Off,
 }
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub struct State {
-    pub power: PowerState,
-    pub temperature: Temperature,
-}
