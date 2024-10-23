@@ -14,11 +14,9 @@ pub fn with_thermistor(
     enable: &mut PinDriver<AnyOutputPin, Output>,
     read: impl Fn() -> Result<f32>,
 ) -> Result<f32> {
-    let _ = enable
-        .set_high()
-         .inspect_err(|_| {
-             enable.set_low().expect("Unable to enable thermistor");
-         });
+    let _ = enable.set_high().inspect_err(|_| {
+        enable.set_low().expect("Unable to enable thermistor");
+    });
 
     // Let current through the thermistor settle
     delay::FreeRtos::delay_ms(100);

@@ -1,5 +1,5 @@
 #[allow(unused_imports)]
-use micromath::F32Ext;  // Required for f32::ln
+use micromath::F32Ext; // Required for f32::ln
 
 static KELVIN_OFFSET: f32 = 273.15;
 
