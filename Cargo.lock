@@ -1634,6 +1634,7 @@ name = "underfloor-heating"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "control",
  "embuild",
  "esp-idf-svc",
  "fixed",

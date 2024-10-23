@@ -7,10 +7,12 @@ use esp_idf_svc::{
         prelude::Peripherals,
     },
 };
+use log::*;
 
 mod measurement;
 mod rgbled;
 
+use measurement::{read_temperature, MeasurementEvent};
 use rgbled::{RGB8, WS2812RMT};
 
 fn main() -> Result<()> {
@@ -37,10 +39,17 @@ fn main() -> Result<()> {
 
     let sysloop = EspSystemEventLoop::take()?;
 
+    let _sub = sysloop.subscribe::<MeasurementEvent, _>(|event| {
+        match event.value() {
+            Ok(value) => info!("Received event {:?}: {:?}", event, value),
+            Err(err) => error!("Received bad event {:?}: {:?}", event, err),
+        }
+    })?;
+
     loop {
         led.set_pixel(RGB8::new(0, 0, 10))?;
         FreeRtos::delay_ms(250);
-        let _temperature = read_temperature(&mut thermistor_enable);
+        let _temperature = read_temperature(&sysloop, &mut thermistor_enable);
         led.set_pixel(RGB8::new(0, 10, 0))?;
         FreeRtos::delay_ms(250);
     }
