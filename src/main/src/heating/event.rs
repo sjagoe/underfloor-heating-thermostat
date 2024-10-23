@@ -1,7 +1,7 @@
 use core::ffi::CStr;
 use esp_idf_svc::eventloop::*;
 
-use control::{PowerState, State, Temperature};
+use control::{PowerState, SetPoint, Temperature};
 
 #[derive(Debug, Clone, Copy)]
 pub enum HeatingPower {
@@ -24,8 +24,8 @@ impl From<PowerState> for HeatingPower {
     }
 }
 
-impl From<State> for HeatingEvent {
-    fn from(state: State) -> HeatingEvent {
+impl From<SetPoint> for HeatingEvent {
+    fn from(state: SetPoint) -> HeatingEvent {
         HeatingEvent {
             power: HeatingPower::from(state.power),
             temperature: state.temperature,

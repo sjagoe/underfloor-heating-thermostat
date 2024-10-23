@@ -26,19 +26,19 @@ pub fn select_temperature(
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub struct State {
+pub struct SetPoint {
     pub power: PowerState,
     pub temperature: Temperature,
 }
 
-impl State {
+impl SetPoint {
     pub fn from_current_state(
         config: &CoreConfig,
         current_temperature: Temperature,
         current_price: ElectricityPrice,
-    ) -> State {
+    ) -> SetPoint {
         if current_temperature > config.turbo_temperature {
-            return State {
+            return SetPoint {
                 power: PowerState::Off,
                 temperature: config.minimum_temperature,
             };
@@ -47,7 +47,7 @@ impl State {
         // Temperature below our low point
         if current_temperature < config.minimum_temperature {
             // Turn on heating high to recover low point
-            return State {
+            return SetPoint {
                 power: PowerState::On,
                 temperature: config.turbo_temperature,
             };
@@ -56,14 +56,14 @@ impl State {
         // Electricity price too high
         if current_price > config.maximum_price {
             // Turn on heating high to recover low point
-            return State {
+            return SetPoint {
                 power: PowerState::Off,
                 temperature: config.minimum_temperature,
             };
         }
 
         let set_temperature = select_temperature(config, current_price);
-        State {
+        SetPoint {
             power: PowerState::On,
             temperature: set_temperature,
         }
@@ -128,7 +128,7 @@ mod tests {
             maximum_price: ElectricityPrice::new(0.30),
         };
         let result =
-            State::from_current_state(&settings, current_temperature, electricity_price);
+            SetPoint::from_current_state(&settings, current_temperature, electricity_price);
 
         assert_eq!(result.power, PowerState::On);
         let min = Temperature::new(20.8);
@@ -148,8 +148,8 @@ mod tests {
             maximum_price: ElectricityPrice::new(0.30),
         };
         let result =
-            State::from_current_state(&settings, current_temperature, electricity_price);
-        let expected = State {
+            SetPoint::from_current_state(&settings, current_temperature, electricity_price);
+        let expected = SetPoint {
             power: PowerState::Off,
             temperature: settings.minimum_temperature,
         };
@@ -167,8 +167,8 @@ mod tests {
             maximum_price: ElectricityPrice::new(0.30),
         };
         let result =
-            State::from_current_state(&settings, current_temperature, electricity_price);
-        let expected = State {
+            SetPoint::from_current_state(&settings, current_temperature, electricity_price);
+        let expected = SetPoint {
             power: PowerState::On,
             temperature: settings.turbo_temperature,
         };
@@ -186,8 +186,8 @@ mod tests {
             maximum_price: ElectricityPrice::new(0.30),
         };
         let result =
-            State::from_current_state(&settings, current_temperature, electricity_price);
-        let expected = State {
+            SetPoint::from_current_state(&settings, current_temperature, electricity_price);
+        let expected = SetPoint {
             power: PowerState::Off,
             temperature: settings.minimum_temperature,
         };
