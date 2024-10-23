@@ -71,20 +71,20 @@ pub fn temperature_from_voltage(v_supply: f32, sample: f32) -> f32 {
     //
     //                     1
     // t2 =  ------------------------------
-    //           ln(rNtc / r1)        1
+    //           ln(rNtc / R1)        1
     //           --------------  +  ----
-    //               beta            t1
+    //               beta            T1
 
     // Voltage divider for resistance from voltage
     // rNtc = R2 = (Vr2 * R1) / (Vcc - Vr2)
 
-    // Substiting
+    // Substuting
 
     //                     1
     // t2 =  ---------------------------------------------------
-    //           ln((Vr2 * R1) / (Vcc - Vr2) / r1)       1
+    //           ln((Vr2 * R1) / (Vcc - Vr2) / R1)       1
     //           ----------------------------------  +  ----
-    //               beta                                t1
+    //               beta                                T1
 
     //                     1
     // t2 =  ------------------------------------

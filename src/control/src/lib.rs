@@ -10,6 +10,8 @@ mod thermistor;
 use config::*;
 use state::*;
 
+pub use thermistor::temperature_from_voltage;
+
 pub fn select_temperature(
     config: &CoreConfig,
     current_price: ElectricityPrice,

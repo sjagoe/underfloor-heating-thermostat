@@ -6,6 +6,7 @@ members = [
     "src/ntc-measurement",
     "src/main",
 ]
+default-members = ["src/main"]
 
 [workspace.dependencies]
 anyhow = { version = "1.0.89", default-features = false }
