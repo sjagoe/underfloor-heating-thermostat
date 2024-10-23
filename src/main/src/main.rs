@@ -3,7 +3,7 @@ use core::time::Duration;
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
     hal::{
-        delay::FreeRtos,
+        delay,
         gpio::{AnyOutputPin, PinDriver},
         prelude::Peripherals,
     },
@@ -13,9 +13,11 @@ use log::*;
 
 mod measurement;
 mod rgbled;
+mod status;
 
 use measurement::{read_temperature, MeasurementEvent};
 use rgbled::{RGB8, WS2812RMT};
+use status::Status;
 
 fn main() -> Result<()> {
     // It is necessary to call this function once. Otherwise some patches to the runtime
@@ -36,7 +38,7 @@ fn main() -> Result<()> {
     heating_enable.set_low()?;
 
     let mut led = WS2812RMT::new(peripherals.pins.gpio8, peripherals.rmt.channel0)?;
-    led.set_pixel(RGB8::new(10, 10, 0))?;
+    led.set_pixel(RGB8::from(Status::Initializing))?;
 
     let sysloop = EspSystemEventLoop::take()?;
     let timer_service = EspTaskTimerService::new()?;
@@ -44,24 +46,31 @@ fn main() -> Result<()> {
         // Avoid move of sysloop into closure
         let localloop = sysloop.clone();
         timer_service.timer(move || {
-            info!("Measuring temperature");
             let sysloop = localloop.clone();
+            sysloop.post::<Status>(&Status::Collecting, delay::BLOCK).expect("Failed to post status");
+            info!("Measuring temperature");
             let _temperature = read_temperature(&sysloop, &mut thermistor_enable);
         })?
     };
     callback_timer.every(Duration::from_secs(1))?;
 
-    let _sub = sysloop.subscribe::<MeasurementEvent, _>(move |event| {
-        match event.value() {
-            Ok(value) => info!("Received event {:?}: {:?}", event, value),
-            Err(err) => error!("Received bad event {:?}: {:?}", event, err),
-        }
+    let _measurement_handler = {
+        let localloop = sysloop.clone();
+        sysloop.subscribe::<MeasurementEvent, _>(move |event| {
+            localloop.post::<Status>(&Status::Ready, delay::BLOCK).expect("failed to post status");
+            match event.value() {
+                Ok(value) => info!("Received event {:?}: {:?}", event, value),
+                Err(err) => error!("Received bad event {:?}: {:?}", event, err),
+            }
+        })?
+    };
+
+    let _status_handler = sysloop.subscribe::<Status, _>(move |event| {
+        let colour = RGB8::from(event);
+        led.set_pixel(colour).expect("Failed to set LED colour");
     })?;
 
     loop {
-        led.set_pixel(RGB8::new(0, 0, 10))?;
-        FreeRtos::delay_ms(250);
-        led.set_pixel(RGB8::new(0, 10, 0))?;
-        FreeRtos::delay_ms(250);
+        delay::FreeRtos::delay_ms(250);
     }
 }
