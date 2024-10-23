@@ -20,7 +20,7 @@ impl MeasurementEvent {
 unsafe impl EspEventSource for MeasurementEvent {
     fn source() -> Option<&'static CStr> {
         // String should be unique across the whole project and ESP IDF
-        Some(CStr::from_bytes_with_nul(b"NTC-MEASUREMENT\0").unwrap())
+        Some(c"NTC-MEASUREMENT")
     }
 }
 

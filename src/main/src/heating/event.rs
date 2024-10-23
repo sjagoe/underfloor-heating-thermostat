@@ -38,7 +38,7 @@ impl From<SetPoint> for HeatingEvent {
 unsafe impl EspEventSource for HeatingEvent {
     fn source() -> Option<&'static CStr> {
         // String should be unique across the whole project and ESP IDF
-        Some(CStr::from_bytes_with_nul(b"HEATING-ENABLE-EVENT\0").unwrap())
+        Some(c"HEATING-ENABLE-EVENT")
     }
 }
 
