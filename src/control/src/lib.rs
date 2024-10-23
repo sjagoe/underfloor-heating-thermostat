@@ -27,12 +27,12 @@ pub fn select_temperature(
 }
 
 pub fn desired_state(
-    current_state: &State,
     config: &CoreConfig,
+    current_temperature: Temperature,
     current_price: ElectricityPrice,
 ) -> SetPoint {
     // Temperature below our low point
-    if current_state.temperature < config.minimum_temperature {
+    if current_temperature < config.minimum_temperature {
         // Turn on heating high to recover low point
         return SetPoint {
             power: PowerState::On,
@@ -102,10 +102,7 @@ mod tests {
     #[test]
     fn test_get_desired_state_low_price() {
         let electricity_price = ElectricityPrice::new(0.05);
-        let current_state = State {
-            power: PowerState::On,
-            temperature: Temperature::new(18.0),
-        };
+        let current_temperature = Temperature::new(18.0);
         let settings = CoreConfig {
             minimum_temperature: Temperature::new(15.0),
             maximum_temperature: Temperature::new(22.0),
@@ -113,7 +110,7 @@ mod tests {
             maximum_price: ElectricityPrice::new(0.30),
         };
         let result =
-            desired_state(&current_state, &settings, electricity_price);
+            desired_state(&settings, current_temperature, electricity_price);
         let expected = SetPoint {
             power: PowerState::On,
             temperature: Temperature::new(20.0),
@@ -124,10 +121,7 @@ mod tests {
     #[test]
     fn test_get_desired_state_high_price() {
         let electricity_price = ElectricityPrice::new(1.20);
-        let current_state = State {
-            power: PowerState::On,
-            temperature: Temperature::new(18.0),
-        };
+        let current_temperature = Temperature::new(18.0);
         let settings = CoreConfig {
             minimum_temperature: Temperature::new(15.0),
             maximum_temperature: Temperature::new(22.0),
@@ -135,7 +129,7 @@ mod tests {
             maximum_price: ElectricityPrice::new(0.30),
         };
         let result =
-            desired_state(&current_state, &settings, electricity_price);
+            desired_state(&settings, current_temperature, electricity_price);
         let expected = SetPoint {
             power: PowerState::Off,
             temperature: settings.minimum_temperature,
@@ -146,10 +140,7 @@ mod tests {
     #[test]
     fn test_get_desired_state_low_temperature() {
         let electricity_price = ElectricityPrice::new(1.20);
-        let current_state = State {
-            power: PowerState::On,
-            temperature: Temperature::new(12.0),
-        };
+        let current_temperature = Temperature::new(12.0);
         let settings = CoreConfig {
             minimum_temperature: Temperature::new(15.0),
             maximum_temperature: Temperature::new(22.0),
@@ -157,7 +148,7 @@ mod tests {
             maximum_price: ElectricityPrice::new(0.30),
         };
         let result =
-            desired_state(&current_state, &settings, electricity_price);
+            desired_state(&settings, current_temperature, electricity_price);
         let expected = SetPoint {
             power: PowerState::On,
             temperature: settings.turbo_temperature,
