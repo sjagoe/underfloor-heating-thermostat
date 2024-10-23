@@ -39,7 +39,7 @@ jobs:
       - name: Enable caching
         uses: Swatinem/rust-cache@v2
       - name: Install ldproxy
-        if: command == "build"
+        if: matrix.action.command == 'build'
         run: cargo install ldproxy
       - name: Run command
         run: cargo ${{ matrix.action.command }} ${{ matrix.action.args }}
