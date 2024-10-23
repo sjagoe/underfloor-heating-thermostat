@@ -3,15 +3,11 @@ use core::time::Duration;
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
     hal::{
-        adc::{
-            attenuation::DB_11,
-            oneshot::config::AdcChannelConfig,
-            oneshot::*,
-        },
+        adc::{attenuation::DB_11, oneshot::config::AdcChannelConfig, oneshot::*},
         delay,
         gpio::{AnyOutputPin, PinDriver},
-        prelude::Peripherals,
         peripheral::Peripheral,
+        prelude::Peripherals,
     },
     timer::EspTaskTimerService,
 };
@@ -27,11 +23,7 @@ use measurement::{read_temperature, MeasurementEvent};
 use rgbled::{RGB8, WS2812RMT};
 use status::StatusEvent;
 
-use control::{
-    CoreConfig,
-    ElectricityPrice,
-    Temperature,
-};
+use control::{CoreConfig, ElectricityPrice, Temperature};
 
 pub struct Config {
     measurement_interval: Duration,
@@ -54,7 +46,6 @@ impl Default for Config {
         }
     }
 }
-
 
 fn main() -> Result<()> {
     // It is necessary to call this function once. Otherwise some patches to the runtime
@@ -86,7 +77,9 @@ fn main() -> Result<()> {
         let localloop = sysloop.clone();
         timer_service.timer(move || {
             let sysloop = localloop.clone();
-            sysloop.post::<StatusEvent>(&StatusEvent::Collecting, delay::BLOCK).expect("Failed to post status");
+            sysloop
+                .post::<StatusEvent>(&StatusEvent::Collecting, delay::BLOCK)
+                .expect("Failed to post status");
             info!("Measuring temperature");
 
             // Only way I could find to use the ADC in this closure is
@@ -105,8 +98,11 @@ fn main() -> Result<()> {
             let value = adc.read(&mut adc_pin).expect("Failed to read from adc");
             warn!("read adc value {:?} -> {:?}", value, f32::from(value));
 
-            let temperature = read_temperature(&mut thermistor_enable, value.into()).expect("Failed to read temperature");
-            localloop.post::<MeasurementEvent>(&temperature, delay::BLOCK).unwrap();
+            let temperature = read_temperature(&mut thermistor_enable, value.into())
+                .expect("Failed to read temperature");
+            localloop
+                .post::<MeasurementEvent>(&temperature, delay::BLOCK)
+                .unwrap();
         })?
     };
 
@@ -116,12 +112,16 @@ fn main() -> Result<()> {
         let set_points = config.set_points;
         let price = config.fake_electricity_price;
         sysloop.subscribe::<MeasurementEvent, _>(move |event| {
-            localloop.post::<StatusEvent>(&StatusEvent::Ready, delay::BLOCK).expect("failed to post status");
+            localloop
+                .post::<StatusEvent>(&StatusEvent::Ready, delay::BLOCK)
+                .expect("failed to post status");
             match event.value() {
                 Ok(value) => {
                     info!("Received event {:?}: {:?}", event, value);
                     let heating_event = get_next_desired_state(&set_points, value, price);
-                    localloop.post::<HeatingEvent>(&heating_event, delay::BLOCK).expect("failed to post heating event");
+                    localloop
+                        .post::<HeatingEvent>(&heating_event, delay::BLOCK)
+                        .expect("failed to post heating event");
                 }
                 Err(err) => error!("Received bad event {:?}: {:?}", event, err),
             }

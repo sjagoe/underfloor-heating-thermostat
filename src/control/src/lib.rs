@@ -8,16 +8,14 @@ pub use config::CoreConfig;
 pub use state::{ElectricityPrice, PowerState, Temperature};
 pub use thermistor::temperature_from_voltage;
 
-pub fn select_temperature(
-    config: &CoreConfig,
-    current_price: ElectricityPrice,
-) -> Temperature {
+pub fn select_temperature(config: &CoreConfig, current_price: ElectricityPrice) -> Temperature {
     let max_price = f32::from(config.maximum_price);
     let price_difference = max_price - f32::from(current_price);
 
     let scaling_factor = price_difference / max_price;
 
-    let temperature_range = f32::from(config.maximum_temperature) - f32::from(config.minimum_temperature);
+    let temperature_range =
+        f32::from(config.maximum_temperature) - f32::from(config.minimum_temperature);
     let temperature_delta = temperature_range * scaling_factor;
 
     let set_temperature = f32::from(config.minimum_temperature) + temperature_delta;
@@ -133,8 +131,18 @@ mod tests {
         assert_eq!(result.power, PowerState::On);
         let min = Temperature::new(20.8);
         let max = Temperature::new(20.9);
-        assert!(min < result.temperature, "{:?} < {:?}", min, result.temperature);
-        assert!(result.temperature < max, "{:?} < {:?}", result.temperature, max);
+        assert!(
+            min < result.temperature,
+            "{:?} < {:?}",
+            min,
+            result.temperature
+        );
+        assert!(
+            result.temperature < max,
+            "{:?} < {:?}",
+            result.temperature,
+            max
+        );
     }
 
     #[test]
