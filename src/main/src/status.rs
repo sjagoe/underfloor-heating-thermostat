@@ -1,3 +1,3 @@
 mod event;
 
-pub use event::Status;
+pub use event::StatusEvent;

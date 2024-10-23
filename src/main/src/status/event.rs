@@ -3,31 +3,31 @@ use esp_idf_svc::eventloop::*;
 use rgb::RGB8;
 
 #[derive(Debug, Clone, Copy)]
-pub enum Status {
+pub enum StatusEvent {
     Initializing,
     Ready,
     Collecting,
 }
 
-impl From<Status> for RGB8 {
-    fn from(status: Status) -> RGB8 {
+impl From<StatusEvent> for RGB8 {
+    fn from(status: StatusEvent) -> RGB8 {
         match status {
-            Status::Initializing => RGB8::new(10, 10, 0),
-            Status::Ready => RGB8::new(0, 10, 0),
-            Status::Collecting => RGB8::new(0, 0, 10),
+            StatusEvent::Initializing => RGB8::new(10, 10, 0),
+            StatusEvent::Ready => RGB8::new(0, 10, 0),
+            StatusEvent::Collecting => RGB8::new(0, 0, 10),
         }
     }
 }
 
-unsafe impl EspEventSource for Status {
+unsafe impl EspEventSource for StatusEvent {
     fn source() -> Option<&'static CStr> {
         // String should be unique across the whole project and ESP IDF
         Some(CStr::from_bytes_with_nul(b"STATUS-EVENT\0").unwrap())
     }
 }
 
-impl EspEventSerializer for Status {
-    type Data<'a> = Status;
+impl EspEventSerializer for StatusEvent {
+    type Data<'a> = StatusEvent;
 
     fn serialize<F, R>(event: &Self::Data<'_>, f: F) -> R
     where
@@ -38,11 +38,11 @@ impl EspEventSerializer for Status {
     }
 }
 
-impl EspEventDeserializer for Status {
-    type Data<'a> = Status;
+impl EspEventDeserializer for StatusEvent {
+    type Data<'a> = StatusEvent;
 
     fn deserialize<'a>(data: &EspEvent<'a>) -> Self::Data<'a> {
         // Just as easy as serializing
-        *unsafe { data.as_payload::<Status>() }
+        *unsafe { data.as_payload::<StatusEvent>() }
     }
 }

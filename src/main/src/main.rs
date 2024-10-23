@@ -19,7 +19,7 @@ mod status;
 use heating::HeatingEvent;
 use measurement::{read_temperature, MeasurementEvent};
 use rgbled::{RGB8, WS2812RMT};
-use status::Status;
+use status::StatusEvent;
 
 pub struct Config {
     measurement_interval: Duration,
@@ -54,7 +54,7 @@ fn main() -> Result<()> {
     heating_enable.set_low()?;
 
     let mut led = WS2812RMT::new(peripherals.pins.gpio8, peripherals.rmt.channel0)?;
-    led.set_pixel(RGB8::from(Status::Initializing))?;
+    led.set_pixel(RGB8::from(StatusEvent::Initializing))?;
 
     let sysloop = EspSystemEventLoop::take()?;
     let timer_service = EspTaskTimerService::new()?;
@@ -63,7 +63,7 @@ fn main() -> Result<()> {
         let localloop = sysloop.clone();
         timer_service.timer(move || {
             let sysloop = localloop.clone();
-            sysloop.post::<Status>(&Status::Collecting, delay::BLOCK).expect("Failed to post status");
+            sysloop.post::<StatusEvent>(&StatusEvent::Collecting, delay::BLOCK).expect("Failed to post status");
             info!("Measuring temperature");
             let _temperature = read_temperature(&sysloop, &mut thermistor_enable);
         })?
@@ -73,7 +73,7 @@ fn main() -> Result<()> {
         // Avoid move of sysloop into closure
         let localloop = sysloop.clone();
         sysloop.subscribe::<MeasurementEvent, _>(move |event| {
-            localloop.post::<Status>(&Status::Ready, delay::BLOCK).expect("failed to post status");
+            localloop.post::<StatusEvent>(&StatusEvent::Ready, delay::BLOCK).expect("failed to post status");
             match event.value() {
                 Ok(value) => info!("Received event {:?}: {:?}", event, value),
                 Err(err) => error!("Received bad event {:?}: {:?}", event, err),
@@ -89,7 +89,7 @@ fn main() -> Result<()> {
         })?
     };
 
-    let _status_handler = sysloop.subscribe::<Status, _>(move |event| {
+    let _status_handler = sysloop.subscribe::<StatusEvent, _>(move |event| {
         let colour = RGB8::from(event);
         led.set_pixel(colour).expect("Failed to set LED colour");
     })?;
