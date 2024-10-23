@@ -1,17 +1,15 @@
-use fixed::types::I7F9;
-
 // Temperature in degrees celcius
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
-pub struct Temperature(pub i16);
+pub struct Temperature(f32);
 
 impl Temperature {
-    pub fn new(value: i16) -> Self {
+    pub fn new(value: f32) -> Self {
         Self(value)
     }
 }
 
-impl From<Temperature> for i16 {
-    fn from(value: Temperature) -> i16 {
+impl From<Temperature> for f32 {
+    fn from(value: Temperature) -> f32 {
         value.0
     }
 }
@@ -19,16 +17,16 @@ impl From<Temperature> for i16 {
 // Electricity price in cents per kWh
 // Can be negative .. that happens, sometimes
 #[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
-pub struct ElectricityPrice(I7F9);
+pub struct ElectricityPrice(f32);
 
 impl ElectricityPrice {
-    pub fn new(value: I7F9) -> Self {
+    pub fn new(value: f32) -> Self {
         Self(value)
     }
 }
 
-impl From<ElectricityPrice> for I7F9 {
-    fn from(value: ElectricityPrice) -> I7F9 {
+impl From<ElectricityPrice> for f32 {
+    fn from(value: ElectricityPrice) -> f32 {
         value.0
     }
 }
