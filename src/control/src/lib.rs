@@ -4,9 +4,8 @@ mod config;
 mod state;
 mod thermistor;
 
-use config::*;
-use state::*;
-
+pub use config::CoreConfig;
+pub use state::{ElectricityPrice, PowerState, State, Temperature};
 pub use thermistor::temperature_from_voltage;
 
 pub fn select_temperature(
@@ -30,11 +29,11 @@ pub fn desired_state(
     config: &CoreConfig,
     current_temperature: Temperature,
     current_price: ElectricityPrice,
-) -> SetPoint {
+) -> State {
     // Temperature below our low point
     if current_temperature < config.minimum_temperature {
         // Turn on heating high to recover low point
-        return SetPoint {
+        return State {
             power: PowerState::On,
             temperature: config.turbo_temperature,
         };
@@ -43,14 +42,14 @@ pub fn desired_state(
     // Electricity price too high
     if current_price > config.maximum_price {
         // Turn on heating high to recover low point
-        return SetPoint {
+        return State {
             power: PowerState::Off,
             temperature: config.minimum_temperature,
         };
     }
 
     let set_temperature = select_temperature(config, current_price);
-    SetPoint {
+    State {
         power: PowerState::On,
         temperature: set_temperature,
     }
@@ -111,7 +110,7 @@ mod tests {
         };
         let result =
             desired_state(&settings, current_temperature, electricity_price);
-        let expected = SetPoint {
+        let expected = State {
             power: PowerState::On,
             temperature: Temperature::new(20.0),
         };
@@ -130,7 +129,7 @@ mod tests {
         };
         let result =
             desired_state(&settings, current_temperature, electricity_price);
-        let expected = SetPoint {
+        let expected = State {
             power: PowerState::Off,
             temperature: settings.minimum_temperature,
         };
@@ -149,7 +148,7 @@ mod tests {
         };
         let result =
             desired_state(&settings, current_temperature, electricity_price);
-        let expected = SetPoint {
+        let expected = State {
             power: PowerState::On,
             temperature: settings.turbo_temperature,
         };

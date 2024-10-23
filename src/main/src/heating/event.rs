@@ -1,10 +1,36 @@
 use core::ffi::CStr;
 use esp_idf_svc::eventloop::*;
 
+use control::{PowerState, State, Temperature};
+
 #[derive(Debug, Clone, Copy)]
-pub enum HeatingEvent {
+pub enum HeatingPower {
     TurnOn,
     TurnOff,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct HeatingEvent {
+    power: HeatingPower,
+    temperature: Temperature,
+}
+
+impl From<PowerState> for HeatingPower {
+    fn from(power: PowerState) -> HeatingPower {
+        match power {
+            PowerState::On => HeatingPower::TurnOn,
+            PowerState::Off => HeatingPower::TurnOff,
+        }
+    }
+}
+
+impl From<State> for HeatingEvent {
+    fn from(state: State) -> HeatingEvent {
+        HeatingEvent {
+            power: HeatingPower::from(state.power),
+            temperature: state.temperature,
+        }
+    }
 }
 
 unsafe impl EspEventSource for HeatingEvent {

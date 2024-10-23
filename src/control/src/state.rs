@@ -42,9 +42,3 @@ pub struct State {
     pub power: PowerState,
     pub temperature: Temperature,
 }
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub struct SetPoint {
-    pub power: PowerState,
-    pub temperature: Temperature,
-}

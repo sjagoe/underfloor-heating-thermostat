@@ -1,13 +1,10 @@
 use anyhow::Result;
-use esp_idf_svc::{
-    eventloop::EspSystemEventLoop,
-    hal::{
-        delay,
-        gpio::{
-            AnyOutputPin,
-            Output,
-            PinDriver,
-        },
+use esp_idf_svc::hal::{
+    delay,
+    gpio::{
+        AnyOutputPin,
+        Output,
+        PinDriver,
     },
 };
 
@@ -36,7 +33,7 @@ pub fn with_thermistor(enable: &mut PinDriver<AnyOutputPin, Output>, read: fn() 
     }
 }
 
-pub fn read_temperature(sysloop: &EspSystemEventLoop, enable: &mut PinDriver<AnyOutputPin, Output>) -> Result<()> {
+pub fn read_temperature(enable: &mut PinDriver<AnyOutputPin, Output>) -> Result<MeasurementEvent> {
     let thermistor_voltage = with_thermistor(enable, || {
         Ok(1500.0)
     })?;
@@ -45,7 +42,7 @@ pub fn read_temperature(sysloop: &EspSystemEventLoop, enable: &mut PinDriver<Any
     let adc_reference_voltage = 4000.0;
 
     let temperature = temperature_from_voltage(adc_reference_voltage, thermistor_voltage);
-    sysloop.post::<MeasurementEvent>(&MeasurementEvent::Measurement(temperature), delay::BLOCK).unwrap();
+    let event = MeasurementEvent::Measurement(temperature);
 
-    Ok(())
+    Ok(event)
 }

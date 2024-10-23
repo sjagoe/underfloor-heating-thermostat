@@ -16,13 +16,20 @@ mod measurement;
 mod rgbled;
 mod status;
 
-use heating::HeatingEvent;
+use heating::{get_next_desired_state, HeatingEvent};
 use measurement::{read_temperature, MeasurementEvent};
 use rgbled::{RGB8, WS2812RMT};
 use status::StatusEvent;
 
+use control::{
+    CoreConfig,
+    ElectricityPrice,
+    Temperature,
+};
+
 pub struct Config {
     measurement_interval: Duration,
+    set_points: CoreConfig,
 }
 
 impl Default for Config {
@@ -30,6 +37,12 @@ impl Default for Config {
         Config {
             // fixme, we should measure every few minutes at most
             measurement_interval: Duration::from_secs(1),
+            set_points: CoreConfig {
+                minimum_temperature: Temperature::new(15.0),
+                maximum_temperature: Temperature::new(22.0),
+                turbo_temperature: Temperature::new(30.0),
+                maximum_price: ElectricityPrice::new(0.30),
+            },
         }
     }
 }
@@ -56,6 +69,8 @@ fn main() -> Result<()> {
     let mut led = WS2812RMT::new(peripherals.pins.gpio8, peripherals.rmt.channel0)?;
     led.set_pixel(RGB8::from(StatusEvent::Initializing))?;
 
+    let config = Config::default();
+
     let sysloop = EspSystemEventLoop::take()?;
     let timer_service = EspTaskTimerService::new()?;
     let callback_timer = {
@@ -65,17 +80,24 @@ fn main() -> Result<()> {
             let sysloop = localloop.clone();
             sysloop.post::<StatusEvent>(&StatusEvent::Collecting, delay::BLOCK).expect("Failed to post status");
             info!("Measuring temperature");
-            let _temperature = read_temperature(&sysloop, &mut thermistor_enable);
+            let temperature = read_temperature(&mut thermistor_enable).expect("Failed to read temperature");
+            localloop.post::<MeasurementEvent>(&temperature, delay::BLOCK).unwrap();
         })?
     };
 
     let _measurement_handler = {
         // Avoid move of sysloop into closure
         let localloop = sysloop.clone();
+        let set_points = config.set_points;
         sysloop.subscribe::<MeasurementEvent, _>(move |event| {
             localloop.post::<StatusEvent>(&StatusEvent::Ready, delay::BLOCK).expect("failed to post status");
             match event.value() {
-                Ok(value) => info!("Received event {:?}: {:?}", event, value),
+                Ok(value) => {
+                    info!("Received event {:?}: {:?}", event, value);
+                    let price = ElectricityPrice::new(0.20);
+                    let heating_event = get_next_desired_state(&set_points, Temperature::new(value), price);
+                    localloop.post::<HeatingEvent>(&heating_event, delay::BLOCK).expect("failed to post heating event");
+                }
                 Err(err) => error!("Received bad event {:?}: {:?}", event, err),
             }
         })?
@@ -93,8 +115,6 @@ fn main() -> Result<()> {
         let colour = RGB8::from(event);
         led.set_pixel(colour).expect("Failed to set LED colour");
     })?;
-
-    let config = Config::default();
 
     callback_timer.every(config.measurement_interval)?;
 
