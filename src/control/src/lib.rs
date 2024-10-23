@@ -37,7 +37,7 @@ impl SetPoint {
         current_temperature: Temperature,
         current_price: ElectricityPrice,
     ) -> SetPoint {
-        if current_temperature > config.turbo_temperature {
+        if current_temperature > config.maximum_temperature {
             return SetPoint {
                 power: PowerState::Off,
                 temperature: config.minimum_temperature,
@@ -179,6 +179,25 @@ mod tests {
     fn test_get_desired_state_very_high_temperature() {
         let electricity_price = ElectricityPrice::new(-1.20);
         let current_temperature = Temperature::new(45.0);
+        let settings = CoreConfig {
+            minimum_temperature: Temperature::new(15.0),
+            maximum_temperature: Temperature::new(22.0),
+            turbo_temperature: Temperature::new(30.0),
+            maximum_price: ElectricityPrice::new(0.30),
+        };
+        let result =
+            SetPoint::from_current_state(&settings, current_temperature, electricity_price);
+        let expected = SetPoint {
+            power: PowerState::Off,
+            temperature: settings.minimum_temperature,
+        };
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_get_desired_state_temperature_max() {
+        let electricity_price = ElectricityPrice::new(-1.20);
+        let current_temperature = Temperature::new(22.1);
         let settings = CoreConfig {
             minimum_temperature: Temperature::new(15.0),
             maximum_temperature: Temperature::new(22.0),
