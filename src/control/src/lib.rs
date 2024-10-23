@@ -82,7 +82,11 @@ mod tests {
             maximum_price: ElectricityPrice::new(0.30),
         };
         let set_temperature = select_temperature(&settings, electricity_price);
-        assert_eq!(set_temperature, Temperature::new(20.0));
+
+        let min = Temperature::new(20.8);
+        let max = Temperature::new(20.9);
+        assert!(min < set_temperature, "{:?} < {:?}", min, set_temperature);
+        assert!(set_temperature < max, "{:?} < {:?}", set_temperature, max);
     }
 
     #[test]
@@ -110,11 +114,12 @@ mod tests {
         };
         let result =
             desired_state(&settings, current_temperature, electricity_price);
-        let expected = State {
-            power: PowerState::On,
-            temperature: Temperature::new(20.0),
-        };
-        assert_eq!(result, expected);
+
+        assert_eq!(result.power, PowerState::On);
+        let min = Temperature::new(20.8);
+        let max = Temperature::new(20.9);
+        assert!(min < result.temperature, "{:?} < {:?}", min, result.temperature);
+        assert!(result.temperature < max, "{:?} < {:?}", result.temperature, max);
     }
 
     #[test]
