@@ -11,10 +11,12 @@ use esp_idf_svc::{
 };
 use log::*;
 
+mod heating;
 mod measurement;
 mod rgbled;
 mod status;
 
+use heating::HeatingEvent;
 use measurement::{read_temperature, MeasurementEvent};
 use rgbled::{RGB8, WS2812RMT};
 use status::Status;
@@ -68,6 +70,7 @@ fn main() -> Result<()> {
     };
 
     let _measurement_handler = {
+        // Avoid move of sysloop into closure
         let localloop = sysloop.clone();
         sysloop.subscribe::<MeasurementEvent, _>(move |event| {
             localloop.post::<Status>(&Status::Ready, delay::BLOCK).expect("failed to post status");
@@ -75,6 +78,14 @@ fn main() -> Result<()> {
                 Ok(value) => info!("Received event {:?}: {:?}", event, value),
                 Err(err) => error!("Received bad event {:?}: {:?}", event, err),
             }
+        })?
+    };
+
+    let _heating_handler = {
+        // Avoid move of sysloop into closure
+        let _localloop = sysloop.clone();
+        sysloop.subscribe::<HeatingEvent, _>(move |event| {
+            info!("Received event {:?}", event);
         })?
     };
 
