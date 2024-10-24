@@ -3,10 +3,8 @@ use core::time::Duration;
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
     hal::{
-        adc::{attenuation::DB_11, oneshot::config::AdcChannelConfig, oneshot::*},
         delay,
         gpio::{AnyOutputPin, PinDriver},
-        peripheral::Peripheral,
         prelude::{FromValueType, Peripherals},
     },
     timer::EspTaskTimerService,
@@ -24,7 +22,6 @@ use measurement::{read_temperature, MeasurementEvent};
 use rgbled::{RGB8, WS2812RMT};
 use status::StatusEvent;
 
-use control::temperature_from_voltage;
 use control::{CoreConfig, ElectricityPrice, Temperature};
 
 pub struct Config {
@@ -57,7 +54,7 @@ fn main() -> Result<()> {
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    let mut peripherals = Peripherals::take().unwrap();
+    let peripherals = Peripherals::take().unwrap();
 
     let thermistor_enable_pin: AnyOutputPin = peripherals.pins.gpio10.into();
     let mut thermistor_enable = PinDriver::output(thermistor_enable_pin)?;
@@ -72,6 +69,11 @@ fn main() -> Result<()> {
 
     let config = Config::default();
 
+    let i2c = peripherals.i2c0;
+    let sda = peripherals.pins.gpio6;
+    let scl = peripherals.pins.gpio7;
+    let mut adc = adc::ADS1015::from_peripheral(i2c, sda.into(), scl.into(), 100.kHz().into())?;
+
     let sysloop = EspSystemEventLoop::take()?;
     let timer_service = EspTaskTimerService::new()?;
     let callback_timer = {
@@ -84,23 +86,7 @@ fn main() -> Result<()> {
                 .expect("Failed to post status");
             info!("Measuring temperature");
 
-            // Only way I could find to use the ADC in this closure is
-            // to use unsafe clone
-            let adc_peripheral = unsafe { peripherals.adc1.clone_unchecked() };
-            let gpio2 = unsafe { peripherals.pins.gpio2.clone_unchecked() };
-
-            let adc = AdcDriver::new(adc_peripheral).expect("fuck");
-            let adc_config = AdcChannelConfig {
-                attenuation: DB_11, // Allegedly a range up to 3.6V
-                calibration: true,
-                ..Default::default()
-            };
-            let mut adc_pin = AdcChannelDriver::new(&adc, gpio2, &adc_config).expect("fuck");
-
-            let value = adc.read(&mut adc_pin).expect("Failed to read from adc");
-            warn!("read adc value {:?} -> {:?}", value, f32::from(value));
-
-            let temperature = read_temperature(&mut thermistor_enable, value.into())
+            let temperature = read_temperature(&mut thermistor_enable, &mut adc)
                 .expect("Failed to read temperature");
             localloop
                 .post::<MeasurementEvent>(&temperature, delay::BLOCK)
@@ -145,36 +131,8 @@ fn main() -> Result<()> {
 
     callback_timer.every(config.measurement_interval)?;
 
-    let i2c = peripherals.i2c0;
-    let sda = peripherals.pins.gpio6;
-    let scl = peripherals.pins.gpio7;
-    let mut adc = adc::ADS1015::from_peripheral(i2c, sda.into(), scl.into(), 100.kHz().into())?;
-
-    let adc_config = adc::AdcConfig {
-        input: adc::AnalogInput::SingleEndedAni0,
-        gain: adc::Gain::Full,
-        mode: adc::Mode::SingleShot,
-        ..adc::AdcConfig::default()
-    };
-
-    let reference = adc.read(&adc_config)?;
-
-    info!("Reference value: {:?}", reference);
-
     loop {
         // fixme we should go into a low-power state until reacting to an event
         delay::FreeRtos::delay_ms(250);
-
-        let adc_config = adc::AdcConfig {
-            input: adc::AnalogInput::SingleEndedAni1,
-            gain: adc::Gain::Full,
-            mode: adc::Mode::SingleShot,
-            ..adc::AdcConfig::default()
-        };
-
-        let value = adc.read(&adc_config)?;
-        warn!("newRead adc value {:?} ({:?}%)", value, value / reference);
-        let temperature = temperature_from_voltage(reference, value);
-        warn!("newTemperature: {:?}", temperature);
     }
 }
