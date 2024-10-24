@@ -6,8 +6,9 @@ use esp_idf_svc::{
         adc::{attenuation::DB_11, oneshot::config::AdcChannelConfig, oneshot::*},
         delay,
         gpio::{AnyOutputPin, PinDriver},
+        i2c,
         peripheral::Peripheral,
-        prelude::Peripherals,
+        prelude::{FromValueType, Peripherals},
     },
     timer::EspTaskTimerService,
 };
@@ -30,6 +31,9 @@ pub struct Config {
     fake_electricity_price: ElectricityPrice,
     set_points: CoreConfig,
 }
+
+// Default address of TI ADS1015/ADS1115
+const ADC_ADDR: u8 = 0b1001000;
 
 impl Default for Config {
     fn default() -> Self {
@@ -143,8 +147,113 @@ fn main() -> Result<()> {
 
     callback_timer.every(config.measurement_interval)?;
 
-    loop {
-        // fixme we should go into a low-power state until reacting to an event
-        delay::FreeRtos::delay_ms(250);
+    let i2c = peripherals.i2c0;
+    let sda = peripherals.pins.gpio6;
+    let scl = peripherals.pins.gpio7;
+
+    let config = i2c::I2cConfig::new().baudrate(100.kHz().into());
+    let mut i2c = i2c::I2cDriver::new(i2c, sda, scl, &config)?;
+
+    // Configure ADS1015
+    let config_high: u8 = 0b1_101_000_1;
+        // 0b1 << 7 // Start a conversion
+        // | 0b100 << 4 // single-ended measurement from AIN0
+        // | 0b000 << 1 // +/- 6.144V range
+        // | 0b1; // single-shot mode
+    let config_low: u8 = 0b100_0_0_0_00;
+        // 0b100 << 5 // 1600 SPS
+        // | 0b0 << 4 // Comparator mode traditional
+        // | 0b0 << 3 // Comparator polarity
+        // | 0b0 << 2 // Comparator latching
+        // | 0b00; // Comparator alert after one conversion
+
+    let mut buf: [u8; 2] = [0; 2];
+    let _ = i2c.write_read(ADC_ADDR, &[0b11], &mut buf, delay::BLOCK)?;
+    warn!("hi_thresh {:04x}", (buf[0] as u16) << 8 | (buf[1] as u16));
+
+    let _ = i2c.write(ADC_ADDR, &[0b11], delay::BLOCK).expect("write hi_thresh address");
+    let _ = i2c.write(ADC_ADDR, &[0b10000000, 0b0], delay::BLOCK).expect("write hi_thresh");
+
+    let mut buf: [u8; 2] = [0; 2];
+    let _ = i2c.write_read(ADC_ADDR, &[0b10], &mut buf, delay::BLOCK)?;
+    warn!("lo_thresh {:04x}", (buf[0] as u16) << 8 | (buf[1] as u16));
+
+    let _ = i2c.write(ADC_ADDR, &[0b10], delay::BLOCK).expect("write lo_thresh address");
+    let _ = i2c.write(ADC_ADDR, &[0b0, 0b0], delay::BLOCK).expect("write lo_thresh");
+
+    let mut buf: [u8; 2] = [0; 2];
+    let _ = i2c.write_read(ADC_ADDR, &[0b10], &mut buf, delay::BLOCK)?;
+    warn!("lo_thresh {:04x}", (buf[0] as u16) << 8 | (buf[1] as u16));
+
+    let mut buf: [u8; 2] = [0; 2];
+    let _ = i2c.write_read(ADC_ADDR, &[0b01], &mut buf, delay::BLOCK)?;
+    warn!("config {:04x}", (buf[0] as u16) << 8 | (buf[1] as u16));
+
+    while buf != [config_high, config_low] {
+        let _ = i2c.write_read(ADC_ADDR, &[0b01], &mut buf, delay::BLOCK)?;
+        warn!("config {:04x}", (buf[0] as u16) << 8 | (buf[1] as u16));
+        delay::FreeRtos::delay_ms(50);
     }
+
+    let _ = i2c.write(ADC_ADDR, &[0b01], delay::BLOCK).expect("write config address");
+    let _ = i2c.write(ADC_ADDR, &[config_high, config_low], delay::BLOCK).expect("write config");
+
+    let mut buf: [u8; 2] = [0; 2];
+    let _ = i2c.write_read(ADC_ADDR, &[0b01], &mut buf, delay::BLOCK)?;
+    warn!("config {:04x}", (buf[0] as u16) << 8 | (buf[1] as u16));
+
+    let ureference: u16;
+    loop {
+        let mut buf: [u8; 2] = [0; 2];
+        let _ = i2c.write_read(ADC_ADDR, &[0b01], &mut buf, delay::BLOCK)?;
+        info!("config 0b{:08b} 0b{:08b}", buf[0], buf[1]);
+        if buf[0] >> 7 == 0b1 {
+            buf = [0; 2];
+            let _ = i2c.write(ADC_ADDR, &[0b00], delay::BLOCK)?;
+            let _ = i2c.read(ADC_ADDR, &mut buf, delay::BLOCK)?;
+            info!("value 0b{:08b} 0b{:08b}", buf[0], buf[1]);
+            ureference = (buf[0] as u16) << 8 | (buf[1] as u16);
+            break;
+        }
+    }
+    let reference = ureference as f32;
+
+    info!("Reference value: {:?} ({:?})", reference, ureference);
+
+    // loop {
+    //     // fixme we should go into a low-power state until reacting to an event
+    //     delay::FreeRtos::delay_ms(250);
+
+    //     let config_high: u8 =
+    //         0b1 << 7 // Start a conversion
+    //         | 0b101 << 4// single-ended measurement from AIN1
+    //         | 0b000 << 1 // +/- 6.144V range
+    //         | 0b1; // single-shot mode
+    //     let config_low: u8 =
+    //         0b000 << 5 // 128 SPS
+    //         | 0b0 << 4 // Comparator mode traditional
+    //         | 0b0 << 3 // Comparator polarity
+    //         | 0b0 << 2 // Comparator latching
+    //         | 0b00; // Comparator alert after one conversion
+
+    //     let _ = i2c.write(ADC_ADDR, &[0b01], delay::BLOCK)?;
+    //     let _ = i2c.write(ADC_ADDR, &[config_high, config_low], delay::BLOCK)?;
+
+    //     'adc: loop {
+    //         delay::FreeRtos::delay_ms(100);
+    //         let mut buf: [u8; 2] = [0; 2];
+    //         let _ = i2c.write_read(ADC_ADDR, &[0b01], &mut buf, delay::BLOCK)?;
+    //         info!("config 0b{:08b} 0b{:08b}", buf[0], buf[1]);
+    //         if buf[0] >> 7 == 0b1 {
+    //             buf = [0; 2];
+    //             let _ = i2c.write_read(ADC_ADDR, &[0b00], &mut buf, delay::BLOCK)?;
+    //             info!("value 0b{:08b} 0b{:08b}", buf[0], buf[1]);
+    //             let uvalue: u16 = (buf[0] as u16) << 8 | (buf[1] as u16);
+    //             let value = uvalue as f32;
+    //             info!("Received ADC reading of {:?} ({:?}), {:?}%", value, uvalue, value * 100.0 / reference);
+    //             break 'adc;
+    //         }
+    //     }
+    // }
+    Ok(())
 }
