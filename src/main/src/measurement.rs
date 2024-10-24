@@ -2,6 +2,7 @@ use anyhow::Result;
 use esp_idf_svc::hal::{
     delay,
     gpio::{AnyOutputPin, Output, PinDriver},
+    i2c::I2cDriver,
 };
 
 use control::{temperature_from_voltage, Temperature};
@@ -14,7 +15,7 @@ use crate::adc;
 
 pub fn read_temperature(
     enable: &mut PinDriver<AnyOutputPin, Output>,
-    adc: &mut adc::ADS1015,
+    i2c_driver: &mut I2cDriver,
 ) -> Result<MeasurementEvent> {
     let adc_config = adc::AdcConfig {
         input: adc::AnalogInput::SingleEndedAni0,
@@ -22,7 +23,7 @@ pub fn read_temperature(
         mode: adc::Mode::SingleShot,
         ..adc::AdcConfig::default()
     };
-    let reference_voltage = adc.read(&adc_config)?;
+    let reference_voltage = adc::read(i2c_driver, &adc_config)?;
 
     let _ = enable.set_high().inspect_err(|_| {
         enable.set_low().expect("Unable to enable thermistor");
@@ -38,7 +39,7 @@ pub fn read_temperature(
         ..adc::AdcConfig::default()
     };
 
-    let result = adc.read(&adc_config);
+    let result = adc::read(i2c_driver, &adc_config);
     // Disable current through thermistor before checking error
     enable.set_low()?;
 

@@ -13,11 +13,13 @@ use log::*;
 
 mod adc;
 mod heating;
+mod i2c;
 mod measurement;
 mod rgbled;
 mod status;
 
 use heating::{get_next_desired_state, HeatingEvent};
+use i2c::{I2CEvent, I2CEventType};
 use measurement::{read_temperature, MeasurementEvent};
 use rgbled::{RGB8, WS2812RMT};
 use status::StatusEvent;
@@ -72,25 +74,43 @@ fn main() -> Result<()> {
     let i2c = peripherals.i2c0;
     let sda = peripherals.pins.gpio6;
     let scl = peripherals.pins.gpio7;
-    let mut adc = adc::ADS1015::from_peripheral(i2c, sda.into(), scl.into(), 100.kHz().into())?;
+    let mut i2c_driver = i2c::init_i2c_driver(i2c, sda.into(), scl.into(), 100.kHz().into())?;
 
     let sysloop = EspSystemEventLoop::take()?;
     let timer_service = EspTaskTimerService::new()?;
-    let callback_timer = {
+    let measurement_timer = {
         // Avoid move of sysloop into closure
         let localloop = sysloop.clone();
         timer_service.timer(move || {
             let sysloop = localloop.clone();
+            let read_event = I2CEvent {
+                event_type: I2CEventType::ReadTemperature,
+            };
             sysloop
-                .post::<StatusEvent>(&StatusEvent::Collecting, delay::BLOCK)
-                .expect("Failed to post status");
-            info!("Measuring temperature");
+                .post::<I2CEvent>(&read_event, delay::BLOCK)
+                .expect("Failed to post read event");
+        })?
+    };
 
-            let temperature = read_temperature(&mut thermistor_enable, &mut adc)
-                .expect("Failed to read temperature");
-            localloop
-                .post::<MeasurementEvent>(&temperature, delay::BLOCK)
-                .unwrap();
+    // Handle all i2c bus interaction here
+    // Later this will also update an I2C display
+    let _i2c_handler = {
+        // Avoid move of sysloop into closure
+        let localloop = sysloop.clone();
+        sysloop.subscribe::<I2CEvent, _>(move |event| {
+            info!("Received event {:?}", event);
+            match event.event_type {
+                I2CEventType::ReadTemperature => {
+                    localloop
+                        .post::<StatusEvent>(&StatusEvent::Collecting, delay::BLOCK)
+                        .expect("Failed to post status");
+                    let temperature = read_temperature(&mut thermistor_enable, &mut i2c_driver)
+                        .expect("Failed to read temperature");
+                    localloop
+                        .post::<MeasurementEvent>(&temperature, delay::BLOCK)
+                        .unwrap();
+                }
+            }
         })?
     };
 
@@ -129,7 +149,7 @@ fn main() -> Result<()> {
         led.set_pixel(colour).expect("Failed to set LED colour");
     })?;
 
-    callback_timer.every(config.measurement_interval)?;
+    measurement_timer.every(config.measurement_interval)?;
 
     loop {
         // fixme we should go into a low-power state until reacting to an event
