@@ -6,7 +6,6 @@ use esp_idf_svc::{
         adc::{attenuation::DB_11, oneshot::config::AdcChannelConfig, oneshot::*},
         delay,
         gpio::{AnyOutputPin, PinDriver},
-        i2c,
         peripheral::Peripheral,
         prelude::{FromValueType, Peripherals},
     },
@@ -14,6 +13,7 @@ use esp_idf_svc::{
 };
 use log::*;
 
+mod adc;
 mod heating;
 mod measurement;
 mod rgbled;
@@ -32,9 +32,6 @@ pub struct Config {
     fake_electricity_price: ElectricityPrice,
     set_points: CoreConfig,
 }
-
-// Default address of TI ADS1015/ADS1115
-const ADC_ADDR: u8 = 0b1001000;
 
 impl Default for Config {
     fn default() -> Self {
@@ -151,75 +148,33 @@ fn main() -> Result<()> {
     let i2c = peripherals.i2c0;
     let sda = peripherals.pins.gpio6;
     let scl = peripherals.pins.gpio7;
+    let mut adc = adc::ADS1015::from_peripheral(i2c, sda.into(), scl.into(), 100.kHz().into())?;
 
-    let config = i2c::I2cConfig::new().baudrate(100.kHz().into());
-    let mut i2c = i2c::I2cDriver::new(i2c, sda, scl, &config)?;
+    let adc_config = adc::AdcConfig {
+        input: adc::AnalogInput::SingleEndedAni0,
+        gain: adc::Gain::Full,
+        mode: adc::Mode::SingleShot,
+        ..adc::AdcConfig::default()
+    };
 
-    // Configure ADS1015
-    let config_high: u8 = // 0b1_101_000_1;
-        0b1 << 7 // Start a conversion
-        | 0b100 << 4 // single-ended measurement from AIN0
-        | 0b000 << 1 // +/- 6.144V range
-        | 0b1; // single-shot mode
-    let config_low: u8 = // 0b100_0_0_0_00;
-        0b100 << 5 // 1600 SPS
-        | 0b0 << 4 // Comparator mode traditional
-        | 0b0 << 3 // Comparator polarity
-        | 0b0 << 2 // Comparator latching
-        | 0b11; // Comparator alert after one conversion
+    let reference = adc.read(&adc_config)?;
 
-    let _ = i2c.write(ADC_ADDR, &[0b01, config_high, config_low], delay::BLOCK).expect("write config");
-
-    let ureference: u16;
-    loop {
-        let mut buf: [u8; 2] = [0; 2];
-        let _ = i2c.write_read(ADC_ADDR, &[0b01], &mut buf, delay::BLOCK)?;
-        info!("config 0b{:08b} 0b{:08b}", buf[0], buf[1]);
-        if buf[0] >> 7 == 0b1 {
-            buf = [0; 2];
-            let _ = i2c.write(ADC_ADDR, &[0b00], delay::BLOCK)?;
-            let _ = i2c.read(ADC_ADDR, &mut buf, delay::BLOCK)?;
-            info!("value 0b{:08b} 0b{:08b}", buf[0], buf[1]);
-            ureference = (buf[0] as u16) << 4 | (buf[1] as u16) >> 4;
-            break;
-        }
-    }
-    let reference = (ureference as f32) * 3.0; // mV
-
-    info!("Reference value: {:?} ({:?})", reference, ureference);
+    info!("Reference value: {:?}", reference);
 
     loop {
         // fixme we should go into a low-power state until reacting to an event
         delay::FreeRtos::delay_ms(250);
 
-        let config_high: u8 =
-            0b1 << 7 // Start a conversion
-            | 0b101 << 4// single-ended measurement from AIN1
-            | 0b000 << 1 // +/- 6.144V range
-            | 0b1; // single-shot mode
-        let config_low: u8 =
-            0b000 << 5 // 128 SPS
-            | 0b0 << 4 // Comparator mode traditional
-            | 0b0 << 3 // Comparator polarity
-            | 0b0 << 2 // Comparator latching
-            | 0b00; // Comparator alert after one conversion
+        let adc_config = adc::AdcConfig {
+            input: adc::AnalogInput::SingleEndedAni1,
+            gain: adc::Gain::Full,
+            mode: adc::Mode::SingleShot,
+            ..adc::AdcConfig::default()
+        };
 
-        let _ = i2c.write(ADC_ADDR, &[0b01, config_high, config_low], delay::BLOCK)?;
-
-        'adc: loop {
-            let mut buf: [u8; 2] = [0; 2];
-            let _ = i2c.write_read(ADC_ADDR, &[0b01], &mut buf, delay::BLOCK)?;
-            if buf[0] >> 7 == 0b1 {
-                buf = [0; 2];
-                let _ = i2c.write_read(ADC_ADDR, &[0b00], &mut buf, delay::BLOCK)?;
-                info!("value 0b{:08b} 0b{:08b}", buf[0], buf[1]);
-                let uvalue: u16 = (buf[0] as u16) << 4 | (buf[1] as u16) >> 4;
-                let value = (uvalue as f32) * 3.0; // mV
-                info!("Received ADC reading of {:?} ({:?}), {:?}%", value, uvalue, value * 100.0 / reference);
-                let temperature = temperature_from_voltage(reference, value);
-                warn!("Temperature: {:?}", temperature);
-                break 'adc;
-            }
-        }
+        let value = adc.read(&adc_config)?;
+        warn!("newRead adc value {:?} ({:?}%)", value, value / reference);
+        let temperature = temperature_from_voltage(reference, value);
+        warn!("newTemperature: {:?}", temperature);
     }
 }
