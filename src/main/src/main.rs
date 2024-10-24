@@ -24,8 +24,8 @@ use measurement::{read_temperature, MeasurementEvent};
 use rgbled::{RGB8, WS2812RMT};
 use status::StatusEvent;
 
-use control::{CoreConfig, ElectricityPrice, Temperature};
 use control::temperature_from_voltage;
+use control::{CoreConfig, ElectricityPrice, Temperature};
 
 pub struct Config {
     measurement_interval: Duration,

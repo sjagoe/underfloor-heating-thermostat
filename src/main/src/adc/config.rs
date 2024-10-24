@@ -98,24 +98,21 @@ impl From<ComparatorConfig> for u8 {
 }
 
 impl AdcConfig {
-    pub fn to_u8_array(&self, begin: bool) -> [u8; 2] {
+    pub fn to_u8_array(self, begin: bool) -> [u8; 2] {
         let start_bit: u8 = match begin {
             true => 0b1,
             false => 0b0,
         };
-        let config_high = start_bit << 7
-            | u8::from(self.input)
-            | u8::from(self.gain)
-            | u8::from(self.mode);
-        let config_low = u8::from(self.rate)
-            | u8::from(self.comparator);
+        let config_high =
+            start_bit << 7 | u8::from(self.input) | u8::from(self.gain) | u8::from(self.mode);
+        let config_low = u8::from(self.rate) | u8::from(self.comparator);
 
         [config_high, config_low]
     }
 }
 
 impl Default for AdcConfig {
-    fn default() -> Self{
+    fn default() -> Self {
         AdcConfig {
             address: 0b1001000,
             input: AnalogInput::DifferentialAni0Ani1,
