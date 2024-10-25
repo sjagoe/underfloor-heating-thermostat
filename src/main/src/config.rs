@@ -5,13 +5,13 @@ use control::{CoreConfig, ElectricityPrice, Temperature};
 
 mod private;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct WifiConfig {
     pub ssid: &'static str,
     pub password: &'static str,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct ServerConfig {
     pub electricity_price_api: &'static str,
     #[allow(dead_code)]
@@ -91,25 +91,6 @@ impl Default for Config {
             },
             wifi: WifiConfig::default(),
             server: ServerConfig::default(),
-        }
-    }
-}
-
-impl Default for WifiConfig {
-    fn default() -> Self {
-        WifiConfig {
-            ssid: "",
-            password: "",
-        }
-    }
-}
-
-impl Default for ServerConfig {
-    fn default() -> Self {
-        ServerConfig {
-            electricity_price_api: "",
-            metrics_url: "",
-            ntp_server: "",
         }
     }
 }
