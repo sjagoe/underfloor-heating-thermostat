@@ -2,32 +2,37 @@ use core::time::Duration;
 
 use control::{CoreConfig, ElectricityPrice, Temperature};
 
-#[toml_cfg::toml_config]
-pub struct TomlConfig {
-    #[default(300)]
-    measurement_interval: u64,
-    #[default(18.0)]
-    set_point_minimum_temperature: f32,
-    #[default(25.0)]
-    set_point_maximum_temperature: f32,
-    #[default(0.15)]
-    set_point_maximum_price: f32,
+mod private;
+
+pub struct WifiConfig {
+    pub ssid: &'static str,
+    pub password: &'static str,
 }
 
 pub struct Config {
     pub measurement_interval: Duration,
     pub fake_electricity_price: ElectricityPrice,
     pub set_points: CoreConfig,
+    pub wifi: WifiConfig,
 }
 
 impl Config {
     pub fn read() -> Self {
-        Config::from(TOML_CONFIG)
+        Config::from(private::TOML_CONFIG)
     }
 }
 
-impl From<TomlConfig> for Config {
-    fn from(config: TomlConfig) -> Self {
+impl From<private::TomlConfig> for WifiConfig {
+    fn from(config: private::TomlConfig) -> Self {
+        WifiConfig {
+            ssid: config.wifi_ssid,
+            password: config.wifi_psk,
+        }
+    }
+}
+
+impl From<private::TomlConfig> for Config {
+    fn from(config: private::TomlConfig) -> Self {
         Config {
             measurement_interval: Duration::from_secs(config.measurement_interval),
             set_points: CoreConfig {
@@ -36,6 +41,7 @@ impl From<TomlConfig> for Config {
                 turbo_temperature: Temperature::new(30.0),
                 maximum_price: ElectricityPrice::new(config.set_point_maximum_price),
             },
+            wifi: WifiConfig::from(config),
             ..Config::default()
         }
     }
@@ -53,6 +59,10 @@ impl Default for Config {
                 turbo_temperature: Temperature::new(30.0),
                 maximum_price: ElectricityPrice::new(0.30),
             },
+            wifi: WifiConfig {
+                ssid: "",
+                password: "",
+            }
         }
     }
 }
