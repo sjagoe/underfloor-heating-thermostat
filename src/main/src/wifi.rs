@@ -5,8 +5,8 @@ use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
     wifi::{AuthMethod, ClientConfiguration, Configuration, EspWifi},
 };
-use std::sync::{Arc, Mutex};
 use log::*;
+use std::sync::{Arc, Mutex};
 
 pub struct SharedWifi<'d> {
     esp_wifi: Arc<Mutex<EspWifi<'d>>>,

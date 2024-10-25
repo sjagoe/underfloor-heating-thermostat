@@ -1,4 +1,5 @@
 #[toml_cfg::toml_config]
+#[derive(Copy, Clone, Debug)]
 pub struct TomlConfig {
     #[default("")]
     wifi_ssid: &'static str,
@@ -12,4 +13,13 @@ pub struct TomlConfig {
     set_point_maximum_temperature: f32,
     #[default(0.15)]
     set_point_maximum_price: f32,
+
+    #[default("")]
+    electricity_price_api: &'static str,
+
+    #[default("")]
+    metrics_url: &'static str,
+
+    #[default("pool.ntp.org")]
+    ntp_server: &'static str,
 }

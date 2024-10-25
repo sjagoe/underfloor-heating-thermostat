@@ -1,5 +1,7 @@
+use serde::{Deserialize, Serialize};
+
 // Temperature in degrees celcius
-#[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, Copy, Deserialize, Serialize)]
 pub struct Temperature(f32);
 
 impl Temperature {
@@ -16,7 +18,7 @@ impl From<Temperature> for f32 {
 
 // Electricity price in cents per kWh
 // Can be negative .. that happens, sometimes
-#[derive(Debug, PartialEq, PartialOrd, Clone, Copy)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, Copy, Deserialize, Serialize)]
 pub struct ElectricityPrice(f32);
 
 impl ElectricityPrice {

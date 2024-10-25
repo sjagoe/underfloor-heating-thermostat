@@ -9,6 +9,8 @@ default-members = ["src/main"]
 
 [workspace.dependencies]
 anyhow = { version = "1.0.89", default-features = false }
+serde = { version = "1.0.213", features = ["derive"] }
+serde_json = "1.0.132"
 
 [profile.dev]
 # Rust debug is too slow.

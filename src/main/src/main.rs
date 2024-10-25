@@ -16,6 +16,7 @@ mod adc;
 mod config;
 mod electricity_price;
 mod heating;
+mod http;
 mod i2c;
 mod measurement;
 mod rgbled;
@@ -51,7 +52,7 @@ fn main() -> Result<()> {
     let mut led = WS2812RMT::new(peripherals.pins.gpio8, peripherals.rmt.channel0)?;
     led.set_pixel(RGB8::from(StatusEvent::Initializing))?;
 
-    let config = Config::read();
+    let config = Config::read()?;
 
     let i2c = peripherals.i2c0;
     let sda = peripherals.pins.gpio6;
@@ -100,7 +101,7 @@ fn main() -> Result<()> {
 
     let _wifi_handler = {
         let _localloop = sysloop.clone();
-        sysloop.subscribe::<WifiEvent, _>(move |event|  match event {
+        sysloop.subscribe::<WifiEvent, _>(move |event| match event {
             WifiEvent::StaDisconnected => {
                 error!("Received STA Disconnected event {:?}", event);
                 delay::FreeRtos::delay_ms(1000);
@@ -148,6 +149,9 @@ fn main() -> Result<()> {
     })?;
 
     shared_wifi.wait_for_connected()?;
+
+    let _hourly_electricity_price =
+        electricity_price::HourlyElectricityPrice::fetch(config.server.electricity_price_api);
 
     measurement_timer.every(config.measurement_interval)?;
 
