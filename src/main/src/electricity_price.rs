@@ -70,9 +70,6 @@ impl SharedElectricityPrice {
         let mut prices = self.prices.lock().unwrap();
         let today = &prices.today;
 
-        warn!("now: {:?}", now);
-        warn!("valid-from {:?}", today.valid_from);
-        warn!("valid-until {:?}", today.valid_until);
         if now >= today.valid_from && now < today.valid_until && prices.tomorrow.is_some() {
             info!("Electricity price data is current");
             // no need to update; we have tomorrow's data and we're still in today
