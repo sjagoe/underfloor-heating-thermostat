@@ -15,7 +15,6 @@ mod event;
 
 use crate::adc;
 use crate::heating::{get_next_desired_state, HeatingEvent};
-use crate::StatusEvent;
 
 #[derive(Copy, Clone, Debug)]
 pub enum MeasurementEvent {
@@ -71,7 +70,6 @@ impl MeasurementEvent {
         set_points: &CoreConfig,
         price: ElectricityPrice,
     ) -> Result<()> {
-        sysloop.post::<StatusEvent>(&StatusEvent::Ready, delay::BLOCK)?;
         match self.value() {
             Ok(value) => {
                 let heating_event = get_next_desired_state(set_points, value, price);

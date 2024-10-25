@@ -2,11 +2,14 @@ use rgb::RGB8;
 
 mod event;
 
+use crate::heating::HeatingPower;
+
 #[derive(Debug, Clone, Copy)]
 pub enum StatusEvent {
     Initializing,
     Ready,
     Collecting,
+    HeatingOn,
 }
 
 impl From<StatusEvent> for RGB8 {
@@ -15,6 +18,16 @@ impl From<StatusEvent> for RGB8 {
             StatusEvent::Initializing => RGB8::new(10, 10, 0),
             StatusEvent::Ready => RGB8::new(0, 10, 0),
             StatusEvent::Collecting => RGB8::new(0, 0, 10),
+            StatusEvent::HeatingOn => RGB8::new(10, 0, 0),
+        }
+    }
+}
+
+impl From<HeatingPower> for StatusEvent {
+    fn from(power: HeatingPower) -> StatusEvent {
+        match power {
+            HeatingPower::TurnOn => StatusEvent::HeatingOn,
+            HeatingPower::TurnOff => StatusEvent::Ready,
         }
     }
 }

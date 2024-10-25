@@ -39,7 +39,10 @@ impl From<SetPoint> for HeatingEvent {
 }
 
 impl HeatingEvent {
-    pub fn switch_heating(self, enable: &mut PinDriver<AnyOutputPin, Output>) -> Result<()> {
+    pub fn switch_heating(
+        self,
+        enable: &mut PinDriver<AnyOutputPin, Output>,
+    ) -> Result<HeatingPower> {
         match (self.power, enable.is_set_high()) {
             (HeatingPower::TurnOn, false) => {
                 info!("Turning on heating output");
@@ -53,7 +56,7 @@ impl HeatingEvent {
                 info!("Heating is already in desired state {:?}", desired_state);
             }
         }
-        Ok(())
+        Ok(self.power)
     }
 }
 

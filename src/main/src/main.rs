@@ -112,12 +112,16 @@ fn main() -> Result<()> {
 
     let _heating_handler = {
         // Avoid move of sysloop into closure
-        let _localloop = sysloop.clone();
+        let localloop = sysloop.clone();
         sysloop.subscribe::<HeatingEvent, _>(move |event| {
             info!("Received event {:?}", event);
-            event
+            let power_state = event
                 .switch_heating(&mut heating_enable)
                 .expect("Failed to switch heating");
+            let status = StatusEvent::from(power_state);
+            localloop
+                .post::<StatusEvent>(&status, delay::BLOCK)
+                .expect("Failed to post status event");
         })?
     };
 
