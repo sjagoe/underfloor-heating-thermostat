@@ -99,18 +99,9 @@ fn main() -> Result<()> {
         let localloop = sysloop.clone();
         sysloop.subscribe::<I2CEvent, _>(move |event| {
             info!("Received event {:?}", event);
-            match event.event_type {
-                I2CEventType::ReadTemperature => {
-                    localloop
-                        .post::<StatusEvent>(&StatusEvent::Collecting, delay::BLOCK)
-                        .expect("Failed to post status");
-                    let temperature = read_temperature(&mut thermistor_enable, &mut i2c_driver)
-                        .expect("Failed to read temperature");
-                    localloop
-                        .post::<MeasurementEvent>(&temperature, delay::BLOCK)
-                        .unwrap();
-                }
-            }
+            event
+                .handle(&localloop, &mut thermistor_enable, &mut i2c_driver)
+                .expect("Error handling i2c event");
         })?
     };
 
