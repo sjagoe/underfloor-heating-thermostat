@@ -26,3 +26,6 @@ control = { path = "../control" }
 
 [build-dependencies]
 embuild = "0.32.0"
+
+[package.metadata.espflash]
+partition_table = "../../partition-table.csv"

@@ -3,6 +3,14 @@
 Automatically contol a single underfloor heating zone based on
 programmed parameters.
 
+## Build / run
+
+In order to use our own partition table, we flash manually with `cargo espflash`.
+
+```
+make run
+```
+
 ## Planned Features
 
 1. Read hourly electricity price from an influxdb database
