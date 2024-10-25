@@ -19,7 +19,6 @@ mod rgbled;
 mod status;
 
 use heating::HeatingEvent;
-use i2c::{I2CEvent, I2CEventType};
 use measurement::MeasurementEvent;
 use rgbled::{RGB8, WS2812RMT};
 use status::StatusEvent;
@@ -74,34 +73,27 @@ fn main() -> Result<()> {
     let i2c = peripherals.i2c0;
     let sda = peripherals.pins.gpio6;
     let scl = peripherals.pins.gpio7;
-    let mut i2c_driver = i2c::init_i2c_driver(i2c, sda.into(), scl.into(), 100.kHz().into())?;
+    let shared_i2c_driver = i2c::init_i2c_driver(i2c, sda.into(), scl.into(), 100.kHz().into())?;
 
     let sysloop = EspSystemEventLoop::take()?;
     let timer_service = EspTaskTimerService::new()?;
     let measurement_timer = {
         // Avoid move of sysloop into closure
         let localloop = sysloop.clone();
+        let i2c_driver = shared_i2c_driver.clone();
         timer_service.timer(move || {
             let sysloop = localloop.clone();
-            let read_event = I2CEvent {
-                event_type: I2CEventType::ReadTemperature,
-            };
-            sysloop
-                .post::<I2CEvent>(&read_event, delay::BLOCK)
-                .expect("Failed to post read event");
-        })?
-    };
 
-    // Handle all i2c bus interaction here
-    // Later this will also update an I2C display
-    let _i2c_handler = {
-        // Avoid move of sysloop into closure
-        let localloop = sysloop.clone();
-        sysloop.subscribe::<I2CEvent, _>(move |event| {
-            info!("Received event {:?}", event);
-            event
-                .handle(&localloop, &mut thermistor_enable, &mut i2c_driver)
-                .expect("Error handling i2c event");
+            sysloop
+                .post::<StatusEvent>(&StatusEvent::Collecting, delay::BLOCK)
+                .expect("Failed to post status");
+            let mut driver = i2c_driver.driver.lock().unwrap();
+            let temperature =
+                MeasurementEvent::take_temperature_reading(&mut thermistor_enable, &mut driver)
+                    .expect("Failed to take temperature reading");
+            sysloop
+                .post::<MeasurementEvent>(&temperature, delay::BLOCK)
+                .expect("Failed to post measurement");
         })?
     };
 
