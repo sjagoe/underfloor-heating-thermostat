@@ -1,4 +1,11 @@
 #[derive(Clone, Copy, Debug)]
+pub enum AdcPrecision {
+    #[allow(dead_code)]
+    Adc16Bit,
+    Adc12Bit,
+}
+
+#[derive(Clone, Copy, Debug)]
 pub enum AnalogInput {
     DifferentialAni0Ani1,
     DifferentialAni0Ani3,
@@ -69,6 +76,7 @@ pub struct ComparatorConfig {
 
 #[derive(Clone, Copy, Debug)]
 pub struct AdcConfig {
+    pub precision: AdcPrecision,
     pub address: u8,
     pub input: AnalogInput,
     pub gain: Gain,
@@ -114,12 +122,24 @@ impl AdcConfig {
 impl Default for AdcConfig {
     fn default() -> Self {
         AdcConfig {
+            precision: AdcPrecision::Adc12Bit,
             address: 0b1001000,
             input: AnalogInput::DifferentialAni0Ani1,
             gain: Gain::Full,
             mode: Mode::Continuous,
             rate: DataRate::SPS1600,
             comparator: ComparatorConfig::default(),
+        }
+    }
+}
+
+impl AdcPrecision {
+    pub fn to_u16(self, value: &[u8; 2]) -> u16 {
+        let hi = value[0] as u16;
+        let lo = value[1] as u16;
+        match self {
+            AdcPrecision::Adc16Bit => hi << 8 | lo,
+            AdcPrecision::Adc12Bit => hi << 4 | lo >> 4,
         }
     }
 }

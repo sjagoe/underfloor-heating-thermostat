@@ -16,7 +16,7 @@ pub fn read(driver: &mut I2cDriver, config: &AdcConfig) -> Result<f32> {
         if buf[0] >> 7 == 0b1 {
             buf = [0; 2];
             driver.write_read(config.address, &[0b00], &mut buf, delay::BLOCK)?;
-            let uvalue: u16 = (buf[0] as u16) << 4 | (buf[1] as u16) >> 4;
+            let uvalue: u16 = config.precision.to_u16(&buf);
             return Ok(config.gain.apply(uvalue));
         }
     }
