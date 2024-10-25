@@ -6,6 +6,7 @@ use esp_idf_svc::{
         gpio::{AnyOutputPin, PinDriver},
         prelude::{FromValueType, Peripherals},
     },
+    sntp::{EspSntp, SntpConf, SyncStatus},
     sys::{esp, esp_wifi_connect},
     timer::EspTaskTimerService,
     wifi::{AuthMethod, WifiEvent},
@@ -22,6 +23,7 @@ mod measurement;
 mod rgbled;
 mod status;
 mod trigger;
+mod utils;
 mod wifi;
 
 use config::Config;
@@ -150,6 +152,14 @@ fn main() -> Result<()> {
 
     shared_wifi.wait_for_connected()?;
 
+    let sntp_conf = SntpConf::<'_> {
+        servers: [config.server.ntp_server],
+        ..Default::default()
+    };
+    let sntp = EspSntp::new(&sntp_conf)?;
+
+    wait_for_sntp(&sntp)?;
+
     let _hourly_electricity_price =
         electricity_price::HourlyElectricityPrice::fetch(config.server.electricity_price_api);
 
@@ -162,4 +172,17 @@ fn main() -> Result<()> {
         // fixme we should go into a low-power state until reacting to an event
         delay::FreeRtos::delay_ms(250);
     }
+}
+
+fn wait_for_sntp(sntp: &EspSntp) -> Result<()> {
+    info!("Waiting for sntp sync");
+    loop {
+        delay::FreeRtos::delay_ms(100);
+        if sntp.get_sync_status() == SyncStatus::Completed {
+            break;
+        }
+    }
+    let now = utils::time::get_datetime()?;
+    info!("Time sync completed at {:?}", now);
+    Ok(())
 }
