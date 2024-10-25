@@ -72,17 +72,6 @@ fn main() -> Result<()> {
         config.wifi.password,
     )?;
 
-    let timer_service = EspTaskTimerService::new()?;
-    let measurement_timer = {
-        // Avoid move of sysloop into closure
-        let localloop = sysloop.clone();
-        timer_service.timer(move || {
-            localloop
-                .post::<TriggerEvent>(&TriggerEvent, delay::BLOCK)
-                .expect("Failed to post trigger");
-        })?
-    };
-
     let _trigger_handler = {
         // Avoid move of sysloop into closure
         let localloop = sysloop.clone();
@@ -160,8 +149,27 @@ fn main() -> Result<()> {
 
     wait_for_sntp(&sntp)?;
 
-    let _hourly_electricity_price =
-        electricity_price::HourlyElectricityPrice::fetch(config.server.electricity_price_api);
+    let now = utils::time::get_datetime()?;
+    let electricity_prices =
+        electricity_price::SharedElectricityPrice::fetch(
+            config.server.electricity_price_api,
+            now,
+        )?;
+
+    let timer_service = EspTaskTimerService::new()?;
+    let measurement_timer = {
+        // Avoid move of sysloop into closure
+        let localloop = sysloop.clone();
+        timer_service.timer(move || {
+            electricity_prices
+                .maybe_update(config.server.electricity_price_api)
+                .expect("Failed to update");
+            warn!("price data {:?}", electricity_prices);
+            localloop
+                .post::<TriggerEvent>(&TriggerEvent, delay::BLOCK)
+                .expect("Failed to post trigger");
+        })?
+    };
 
     measurement_timer.every(config.measurement_interval)?;
 
