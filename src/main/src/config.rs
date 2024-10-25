@@ -4,11 +4,13 @@ use control::{CoreConfig, ElectricityPrice, Temperature};
 
 mod private;
 
+#[derive(Copy, Clone, Debug)]
 pub struct WifiConfig {
     pub ssid: &'static str,
     pub password: &'static str,
 }
 
+#[derive(Copy, Clone, Debug)]
 pub struct Config {
     pub measurement_interval: Duration,
     pub fake_electricity_price: ElectricityPrice,

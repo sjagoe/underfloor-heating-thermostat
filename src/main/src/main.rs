@@ -6,6 +6,7 @@ use esp_idf_svc::{
         gpio::{AnyOutputPin, PinDriver},
         prelude::{FromValueType, Peripherals},
     },
+    sys::{esp, esp_wifi_connect},
     timer::EspTaskTimerService,
     wifi::{AuthMethod, WifiEvent},
 };
@@ -56,6 +57,16 @@ fn main() -> Result<()> {
     let shared_i2c_driver = i2c::init_i2c_driver(i2c, sda.into(), scl.into(), 100.kHz().into())?;
 
     let sysloop = EspSystemEventLoop::take()?;
+
+    let shared_wifi = wifi::SharedWifi::connect_wifi(
+        peripherals.modem,
+        sysloop.clone(),
+        None,
+        AuthMethod::WPA2Personal,
+        config.wifi.ssid,
+        config.wifi.password,
+    )?;
+
     let timer_service = EspTaskTimerService::new()?;
     let measurement_timer = {
         // Avoid move of sysloop into closure
@@ -72,6 +83,22 @@ fn main() -> Result<()> {
             localloop
                 .post::<MeasurementEvent>(&temperature, delay::BLOCK)
                 .expect("Failed to post measurement");
+        })?
+    };
+
+    let _wifi_handler = {
+        let _localloop = sysloop.clone();
+        sysloop.subscribe::<WifiEvent, _>(move |event|  match event {
+            WifiEvent::StaDisconnected => {
+                error!("Received STA Disconnected event {:?}", event);
+                delay::FreeRtos::delay_ms(1000);
+                // NOTE: calling the FFI binding directly to prevent casusing a move
+                // on the the EspWifi instance.
+                if let Err(err) = esp!(unsafe { esp_wifi_connect() }) {
+                    info!("Error calling wifi.connect in wifi reconnect {:?}", err);
+                }
+            }
+            _ => info!("Received other Wifi event: {:?}", event),
         })?
     };
 
@@ -107,6 +134,8 @@ fn main() -> Result<()> {
         let colour = RGB8::from(event);
         led.set_pixel(colour).expect("Failed to set LED colour");
     })?;
+
+    shared_wifi.wait_for_connected()?;
 
     measurement_timer.every(config.measurement_interval)?;
 

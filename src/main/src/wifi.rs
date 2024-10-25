@@ -1,14 +1,14 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use esp_idf_svc::hal::{delay::FreeRtos, modem::WifiModemPeripheral, peripheral::Peripheral};
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
     wifi::{AuthMethod, ClientConfiguration, Configuration, EspWifi},
 };
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex};
 use log::*;
 
-struct SharedWifi<'d> {
+pub struct SharedWifi<'d> {
     esp_wifi: Arc<Mutex<EspWifi<'d>>>,
 }
 
@@ -23,7 +23,13 @@ impl<'d> SharedWifi<'d> {
     ) -> Result<SharedWifi<'d>> {
         let mut wifi = EspWifi::new(modem, sysloop.clone(), partition)?;
 
+        if ssid.is_empty() {
+            bail!("WiFi SSID is required configuration");
+        }
+        info!("Connecting to WiFi {:?}", ssid);
+
         if psk.is_empty() {
+            warn!("Attempting to connect without authentication");
             wifi.set_configuration(&Configuration::Client(ClientConfiguration {
                 ssid: ssid.try_into().expect("Could not parse SSID"),
                 auth_method: AuthMethod::None,
@@ -52,6 +58,7 @@ impl<'d> SharedWifi<'d> {
     }
 
     pub fn wait_for_connected(&self) -> Result<()> {
+        info!("Waiting for WiFi Connection");
         let wifi = self.esp_wifi.lock().unwrap();
 
         loop {

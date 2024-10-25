@@ -1,5 +1,6 @@
 use crate::state::{ElectricityPrice, Temperature};
 
+#[derive(Copy, Clone, Debug)]
 pub struct CoreConfig {
     // Minimam allowed temperature set point if heating is on
     pub minimum_temperature: Temperature,
