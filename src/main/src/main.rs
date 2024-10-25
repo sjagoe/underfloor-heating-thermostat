@@ -1,5 +1,4 @@
 use anyhow::Result;
-use core::time::Duration;
 use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
     hal::{
@@ -13,6 +12,7 @@ use esp_idf_svc::{
 use log::*;
 
 mod adc;
+mod config;
 mod electricity_price;
 mod heating;
 mod i2c;
@@ -21,34 +21,11 @@ mod rgbled;
 mod status;
 mod wifi;
 
+use config::Config;
 use heating::HeatingEvent;
 use measurement::MeasurementEvent;
 use rgbled::{RGB8, WS2812RMT};
 use status::StatusEvent;
-
-use control::{CoreConfig, ElectricityPrice, Temperature};
-
-pub struct Config {
-    measurement_interval: Duration,
-    fake_electricity_price: ElectricityPrice,
-    set_points: CoreConfig,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            // fixme, we should measure every few minutes at most
-            measurement_interval: Duration::from_secs(1),
-            fake_electricity_price: ElectricityPrice::new(0.20),
-            set_points: CoreConfig {
-                minimum_temperature: Temperature::new(15.0),
-                maximum_temperature: Temperature::new(22.0),
-                turbo_temperature: Temperature::new(30.0),
-                maximum_price: ElectricityPrice::new(0.30),
-            },
-        }
-    }
-}
 
 fn main() -> Result<()> {
     // It is necessary to call this function once. Otherwise some patches to the runtime
@@ -71,7 +48,7 @@ fn main() -> Result<()> {
     let mut led = WS2812RMT::new(peripherals.pins.gpio8, peripherals.rmt.channel0)?;
     led.set_pixel(RGB8::from(StatusEvent::Initializing))?;
 
-    let config = Config::default();
+    let config = Config::read();
 
     let i2c = peripherals.i2c0;
     let sda = peripherals.pins.gpio6;

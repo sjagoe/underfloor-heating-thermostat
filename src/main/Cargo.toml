@@ -24,9 +24,11 @@ rand = "0.8.5"
 fixed = "1.28.0"
 control = { path = "../control" }
 time = { version = "0.3.36", default-features = false }
+toml-cfg = "0.2.0"
 
 [build-dependencies]
 embuild = "0.32.0"
+toml-cfg = "0.2.0"
 
 [package.metadata.espflash]
 partition_table = "../../partition-table.csv"
