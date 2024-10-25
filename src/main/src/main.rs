@@ -82,16 +82,14 @@ fn main() -> Result<()> {
         let localloop = sysloop.clone();
         let i2c_driver = shared_i2c_driver.clone();
         timer_service.timer(move || {
-            let sysloop = localloop.clone();
-
-            sysloop
+            localloop
                 .post::<StatusEvent>(&StatusEvent::Measuring, delay::BLOCK)
                 .expect("Failed to post status");
             let mut driver = i2c_driver.lock();
             let temperature =
                 MeasurementEvent::take_temperature_reading(&mut thermistor_enable, &mut driver)
                     .expect("Failed to take temperature reading");
-            sysloop
+            localloop
                 .post::<MeasurementEvent>(&temperature, delay::BLOCK)
                 .expect("Failed to post measurement");
         })?
