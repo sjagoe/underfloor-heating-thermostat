@@ -20,7 +20,7 @@ mod status;
 
 use heating::HeatingEvent;
 use i2c::{I2CEvent, I2CEventType};
-use measurement::{read_temperature, MeasurementEvent};
+use measurement::MeasurementEvent;
 use rgbled::{RGB8, WS2812RMT};
 use status::StatusEvent;
 

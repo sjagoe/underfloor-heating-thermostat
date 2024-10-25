@@ -12,7 +12,6 @@ use esp_idf_svc::{
 
 mod event;
 
-use crate::read_temperature;
 use crate::MeasurementEvent;
 use crate::StatusEvent;
 
@@ -47,7 +46,8 @@ impl I2CEvent {
         match self.event_type {
             I2CEventType::ReadTemperature => {
                 sysloop.post::<StatusEvent>(&StatusEvent::Collecting, delay::BLOCK)?;
-                let temperature = read_temperature(thermistor_enable, i2c_driver)?;
+                let temperature =
+                    MeasurementEvent::take_temperature_reading(thermistor_enable, i2c_driver)?;
                 sysloop.post::<MeasurementEvent>(&temperature, delay::BLOCK)?;
             }
         }
