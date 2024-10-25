@@ -12,6 +12,7 @@ use esp_idf_svc::{
 use log::*;
 
 mod adc;
+mod electricity_price;
 mod heating;
 mod i2c;
 mod measurement;
