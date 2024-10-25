@@ -1,31 +1,15 @@
-use anyhow::Result;
 use core::ffi::CStr;
 use esp_idf_svc::eventloop::*;
 
-use control::Temperature;
-
-#[derive(Copy, Clone, Debug)]
-pub enum MeasurementEvent {
-    Measurement(Temperature),
-}
-
-impl MeasurementEvent {
-    pub fn value(&self) -> Result<Temperature> {
-        match self {
-            MeasurementEvent::Measurement(value) => Ok(*value),
-        }
-    }
-}
-
-unsafe impl EspEventSource for MeasurementEvent {
+unsafe impl EspEventSource for super::MeasurementEvent {
     fn source() -> Option<&'static CStr> {
         // String should be unique across the whole project and ESP IDF
         Some(c"NTC-MEASUREMENT")
     }
 }
 
-impl EspEventSerializer for MeasurementEvent {
-    type Data<'a> = MeasurementEvent;
+impl EspEventSerializer for super::MeasurementEvent {
+    type Data<'a> = super::MeasurementEvent;
 
     fn serialize<F, R>(event: &Self::Data<'_>, f: F) -> R
     where
@@ -36,11 +20,11 @@ impl EspEventSerializer for MeasurementEvent {
     }
 }
 
-impl EspEventDeserializer for MeasurementEvent {
-    type Data<'a> = MeasurementEvent;
+impl EspEventDeserializer for super::MeasurementEvent {
+    type Data<'a> = super::MeasurementEvent;
 
     fn deserialize<'a>(data: &EspEvent<'a>) -> Self::Data<'a> {
         // Just as easy as serializing
-        *unsafe { data.as_payload::<MeasurementEvent>() }
+        *unsafe { data.as_payload::<super::MeasurementEvent>() }
     }
 }

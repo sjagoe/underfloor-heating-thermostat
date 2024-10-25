@@ -18,7 +18,7 @@ mod measurement;
 mod rgbled;
 mod status;
 
-use heating::{get_next_desired_state, HeatingEvent};
+use heating::HeatingEvent;
 use i2c::{I2CEvent, I2CEventType};
 use measurement::{read_temperature, MeasurementEvent};
 use rgbled::{RGB8, WS2812RMT};
@@ -111,19 +111,10 @@ fn main() -> Result<()> {
         let set_points = config.set_points;
         let price = config.fake_electricity_price;
         sysloop.subscribe::<MeasurementEvent, _>(move |event| {
-            localloop
-                .post::<StatusEvent>(&StatusEvent::Ready, delay::BLOCK)
-                .expect("failed to post status");
-            match event.value() {
-                Ok(value) => {
-                    info!("Received event {:?}: {:?}", event, value);
-                    let heating_event = get_next_desired_state(&set_points, value, price);
-                    localloop
-                        .post::<HeatingEvent>(&heating_event, delay::BLOCK)
-                        .expect("failed to post heating event");
-                }
-                Err(err) => error!("Received bad event {:?}: {:?}", event, err),
-            }
+            info!("Received event {:?}", event);
+            event
+                .handle(&localloop, &set_points, price)
+                .expect("Failed to handle measurement event");
         })?
     };
 

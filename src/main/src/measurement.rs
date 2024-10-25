@@ -1,17 +1,51 @@
 use anyhow::Result;
-use esp_idf_svc::hal::{
-    delay,
-    gpio::{AnyOutputPin, Output, PinDriver},
-    i2c::I2cDriver,
+use esp_idf_svc::{
+    eventloop::EspSystemEventLoop,
+    hal::{
+        delay,
+        gpio::{AnyOutputPin, Output, PinDriver},
+        i2c::I2cDriver,
+    },
 };
+use log::*;
 
-use control::{temperature_from_voltage, Temperature};
+use control::{temperature_from_voltage, CoreConfig, ElectricityPrice, Temperature};
 
 mod event;
 
-pub use event::MeasurementEvent;
-
 use crate::adc;
+use crate::heating::{get_next_desired_state, HeatingEvent};
+use crate::StatusEvent;
+
+#[derive(Copy, Clone, Debug)]
+pub enum MeasurementEvent {
+    Measurement(Temperature),
+}
+
+impl MeasurementEvent {
+    pub fn value(self) -> Result<Temperature> {
+        match self {
+            MeasurementEvent::Measurement(value) => Ok(value),
+        }
+    }
+
+    pub fn handle(
+        self,
+        sysloop: &EspSystemEventLoop,
+        set_points: &CoreConfig,
+        price: ElectricityPrice,
+    ) -> Result<()> {
+        sysloop.post::<StatusEvent>(&StatusEvent::Ready, delay::BLOCK)?;
+        match self.value() {
+            Ok(value) => {
+                let heating_event = get_next_desired_state(&set_points, value, price);
+                sysloop.post::<HeatingEvent>(&heating_event, delay::BLOCK)?;
+            }
+            Err(err) => error!("Received bad event {:?}: {:?}", self, err),
+        }
+        Ok(())
+    }
+}
 
 pub fn read_temperature(
     enable: &mut PinDriver<AnyOutputPin, Output>,
