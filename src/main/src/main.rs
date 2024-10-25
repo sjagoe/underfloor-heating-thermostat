@@ -20,6 +20,7 @@ mod i2c;
 mod measurement;
 mod rgbled;
 mod status;
+mod trigger;
 mod wifi;
 
 use config::Config;
@@ -27,6 +28,7 @@ use heating::HeatingEvent;
 use measurement::MeasurementEvent;
 use rgbled::{RGB8, WS2812RMT};
 use status::StatusEvent;
+use trigger::TriggerEvent;
 
 fn main() -> Result<()> {
     // It is necessary to call this function once. Otherwise some patches to the runtime
@@ -71,8 +73,18 @@ fn main() -> Result<()> {
     let measurement_timer = {
         // Avoid move of sysloop into closure
         let localloop = sysloop.clone();
-        let i2c_driver = shared_i2c_driver.clone();
         timer_service.timer(move || {
+            localloop
+                .post::<TriggerEvent>(&TriggerEvent, delay::BLOCK)
+                .expect("Failed to post trigger");
+        })?
+    };
+
+    let _trigger_handler = {
+        // Avoid move of sysloop into closure
+        let localloop = sysloop.clone();
+        let i2c_driver = shared_i2c_driver.clone();
+        sysloop.subscribe::<TriggerEvent, _>(move |_| {
             localloop
                 .post::<StatusEvent>(&StatusEvent::Measuring, delay::BLOCK)
                 .expect("Failed to post status");
@@ -138,6 +150,9 @@ fn main() -> Result<()> {
     shared_wifi.wait_for_connected()?;
 
     measurement_timer.every(config.measurement_interval)?;
+
+    // Run the first evaluation immediately
+    sysloop.post::<TriggerEvent>(&TriggerEvent, delay::BLOCK)?;
 
     loop {
         // fixme we should go into a low-power state until reacting to an event
