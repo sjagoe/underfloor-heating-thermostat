@@ -8,6 +8,7 @@ use esp_idf_svc::{
         prelude::{FromValueType, Peripherals},
     },
     timer::EspTaskTimerService,
+    wifi::{AuthMethod, WifiEvent},
 };
 use log::*;
 
@@ -18,6 +19,7 @@ mod i2c;
 mod measurement;
 mod rgbled;
 mod status;
+mod wifi;
 
 use heating::HeatingEvent;
 use measurement::MeasurementEvent;
