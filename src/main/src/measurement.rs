@@ -27,13 +27,13 @@ impl MeasurementEvent {
         enable: &mut PinDriver<AnyOutputPin, Output>,
         i2c_driver: &mut I2cDriver,
     ) -> Result<MeasurementEvent> {
-        let adc_config = adc::AdcConfig {
+        let reference_adc_config = adc::AdcConfig {
             input: adc::AnalogInput::SingleEndedAni0,
             gain: adc::Gain::Full,
             mode: adc::Mode::SingleShot,
             ..adc::AdcConfig::default()
         };
-        let reference_voltage = adc::read(i2c_driver, &adc_config)?;
+        let reference_voltage = adc::read(i2c_driver, &reference_adc_config)?;
 
         let _ = enable.set_high().inspect_err(|_| {
             enable.set_low().expect("Unable to enable thermistor");
@@ -44,9 +44,7 @@ impl MeasurementEvent {
 
         let adc_config = adc::AdcConfig {
             input: adc::AnalogInput::SingleEndedAni1,
-            gain: adc::Gain::Full,
-            mode: adc::Mode::SingleShot,
-            ..adc::AdcConfig::default()
+            ..reference_adc_config
         };
 
         let result = adc::read(i2c_driver, &adc_config);
