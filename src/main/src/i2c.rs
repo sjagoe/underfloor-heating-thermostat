@@ -5,11 +5,17 @@ use esp_idf_svc::hal::{
     peripheral::Peripheral,
     units::Hertz,
 };
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 
 #[derive(Clone)]
 pub struct SharedI2cDriver<'d> {
-    pub driver: Arc<Mutex<I2cDriver<'d>>>,
+    driver: Arc<Mutex<I2cDriver<'d>>>,
+}
+
+impl<'d> SharedI2cDriver<'d> {
+    pub fn lock(&self) -> MutexGuard<'_, I2cDriver<'d>> {
+        self.driver.lock().unwrap()
+    }
 }
 
 pub fn init_i2c_driver<'d>(

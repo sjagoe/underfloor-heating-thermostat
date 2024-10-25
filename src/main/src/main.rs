@@ -87,7 +87,7 @@ fn main() -> Result<()> {
             sysloop
                 .post::<StatusEvent>(&StatusEvent::Collecting, delay::BLOCK)
                 .expect("Failed to post status");
-            let mut driver = i2c_driver.driver.lock().unwrap();
+            let mut driver = i2c_driver.lock();
             let temperature =
                 MeasurementEvent::take_temperature_reading(&mut thermistor_enable, &mut driver)
                     .expect("Failed to take temperature reading");
