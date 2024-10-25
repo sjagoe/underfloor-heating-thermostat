@@ -8,7 +8,7 @@ use crate::heating::HeatingPower;
 pub enum StatusEvent {
     Initializing,
     Ready,
-    Collecting,
+    Measuring,
     HeatingOn,
 }
 
@@ -17,7 +17,7 @@ impl From<StatusEvent> for RGB8 {
         match status {
             StatusEvent::Initializing => RGB8::new(10, 10, 0),
             StatusEvent::Ready => RGB8::new(0, 10, 0),
-            StatusEvent::Collecting => RGB8::new(0, 0, 10),
+            StatusEvent::Measuring => RGB8::new(0, 0, 10),
             StatusEvent::HeatingOn => RGB8::new(10, 0, 0),
         }
     }

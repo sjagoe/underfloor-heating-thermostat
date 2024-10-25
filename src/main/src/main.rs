@@ -85,7 +85,7 @@ fn main() -> Result<()> {
             let sysloop = localloop.clone();
 
             sysloop
-                .post::<StatusEvent>(&StatusEvent::Collecting, delay::BLOCK)
+                .post::<StatusEvent>(&StatusEvent::Measuring, delay::BLOCK)
                 .expect("Failed to post status");
             let mut driver = i2c_driver.lock();
             let temperature =
