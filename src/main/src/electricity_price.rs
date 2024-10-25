@@ -25,9 +25,9 @@ pub struct HourlyElectricityPrice {
     pub hourly_price: HashMap<PrimitiveDateTime, ElectricityPrice>,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
 pub struct MultiDayElectricityPrice {
-    today: HourlyElectricityPrice,
+    today: Option<HourlyElectricityPrice>,
     tomorrow: Option<HourlyElectricityPrice>,
 }
 
@@ -37,10 +37,14 @@ impl MultiDayElectricityPrice {
         let data: MultiDayElectricityPrice = serde_json::from_str(&json)?;
 
         if let Some(tomorrow) = &data.tomorrow {
+            if now >= tomorrow.valid_until {
+                error!("Received stale electricity price data!");
+                return Ok(MultiDayElectricityPrice::default());
+            }
             if now >= tomorrow.valid_from && now < tomorrow.valid_until {
                 warn!("MultiDayElectricityPrice.tomorrow appears to be today's data");
                 let new_data = MultiDayElectricityPrice {
-                    today: tomorrow.clone(),
+                    today: Some(tomorrow.clone()),
                     tomorrow: None,
                 };
                 return Ok(new_data);
@@ -68,34 +72,44 @@ impl SharedElectricityPrice {
         let now = crate::utils::time::get_datetime()?;
 
         let mut prices = self.prices.lock().unwrap();
-        let today = &prices.today;
+        let today = prices.today.clone();
+        let tomorrow = &prices.tomorrow.clone();
 
-        if now >= today.valid_from && now < today.valid_until && prices.tomorrow.is_some() {
-            info!("Electricity price data is current");
-            // no need to update; we have tomorrow's data and we're still in today
-            return Ok(());
-        }
+        let mut do_update = || -> Result<()> {
+            info!("Updating electricity price data");
+            let data = MultiDayElectricityPrice::fetch(url, now)?;
+            prices.today = data.today;
+            prices.tomorrow = data.tomorrow;
+            Ok(())
+        };
 
-        match &prices.tomorrow {
-            Some(tomorrow) => {
-                if now >= tomorrow.valid_from && now < tomorrow.valid_until {
-                    info!("Promoting tomorrow's data to being in use");
-                    prices.today = tomorrow.clone();
-                    prices.tomorrow = None;
+        match today {
+            Some(today) => {
+                if now >= today.valid_from && now < today.valid_until && tomorrow.is_some() {
+                    info!("Electricity price data is current");
+                    // no need to update; we have tomorrow's data and we're still in today
+                    return Ok(());
+                }
+
+                match tomorrow {
+                    Some(tomorrow) => {
+                        if now >= tomorrow.valid_from && now < tomorrow.valid_until {
+                            info!("Promoting tomorrow's data to being in use");
+                            prices.today = Some(tomorrow.clone());
+                            prices.tomorrow = None;
+                        }
+                    }
+                    None => {
+                        if now > today.valid_until - 3.hours() {
+                            do_update()?;
+                        } else {
+                            info!("Current prices are valid and it's too early to fetch tomorrow");
+                        }
+                    }
                 }
             }
-            None => {
-                if now > prices.today.valid_until - 3.hours() {
-                    info!("Updating electricity price data");
-                    let data = MultiDayElectricityPrice::fetch(url, now)?;
-                    prices.today = data.today;
-                    prices.tomorrow = data.tomorrow;
-                } else {
-                    info!("Current prices are valid and it's too early to fetch tomorrow");
-                }
-            }
+            None => do_update()?,
         }
-
         Ok(())
     }
 }
