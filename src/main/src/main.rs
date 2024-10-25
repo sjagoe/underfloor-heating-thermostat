@@ -115,6 +115,9 @@ fn main() -> Result<()> {
         let _localloop = sysloop.clone();
         sysloop.subscribe::<HeatingEvent, _>(move |event| {
             info!("Received event {:?}", event);
+            event
+                .switch_heating(&mut heating_enable)
+                .expect("Failed to switch heating");
         })?
     };
 

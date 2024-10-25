@@ -1,3 +1,7 @@
+use anyhow::Result;
+use esp_idf_svc::hal::gpio::{AnyOutputPin, Output, PinDriver};
+use log::*;
+
 mod event;
 
 use control::{CoreConfig, ElectricityPrice, PowerState, SetPoint, Temperature};
@@ -31,6 +35,25 @@ impl From<SetPoint> for HeatingEvent {
             power: HeatingPower::from(state.power),
             temperature: state.temperature,
         }
+    }
+}
+
+impl HeatingEvent {
+    pub fn switch_heating(self, enable: &mut PinDriver<AnyOutputPin, Output>) -> Result<()> {
+        match (self.power, enable.is_set_high()) {
+            (HeatingPower::TurnOn, false) => {
+                info!("Turning on heating output");
+                enable.set_high()?;
+            }
+            (HeatingPower::TurnOff, true) => {
+                info!("Turning off heating output");
+                enable.set_low()?;
+            }
+            (desired_state, _) => {
+                info!("Heating is already in desired state {:?}", desired_state);
+            }
+        }
+        Ok(())
     }
 }
 
