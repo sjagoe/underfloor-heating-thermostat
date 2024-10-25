@@ -1,49 +1,15 @@
 use core::ffi::CStr;
 use esp_idf_svc::eventloop::*;
 
-use control::{PowerState, SetPoint, Temperature};
-
-#[derive(Debug, Clone, Copy)]
-pub enum HeatingPower {
-    TurnOn,
-    TurnOff,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct HeatingEvent {
-    #[allow(dead_code)]
-    power: HeatingPower,
-    #[allow(dead_code)]
-    temperature: Temperature,
-}
-
-impl From<PowerState> for HeatingPower {
-    fn from(power: PowerState) -> HeatingPower {
-        match power {
-            PowerState::On => HeatingPower::TurnOn,
-            PowerState::Off => HeatingPower::TurnOff,
-        }
-    }
-}
-
-impl From<SetPoint> for HeatingEvent {
-    fn from(state: SetPoint) -> HeatingEvent {
-        HeatingEvent {
-            power: HeatingPower::from(state.power),
-            temperature: state.temperature,
-        }
-    }
-}
-
-unsafe impl EspEventSource for HeatingEvent {
+unsafe impl EspEventSource for super::HeatingEvent {
     fn source() -> Option<&'static CStr> {
         // String should be unique across the whole project and ESP IDF
         Some(c"HEATING-ENABLE-EVENT")
     }
 }
 
-impl EspEventSerializer for HeatingEvent {
-    type Data<'a> = HeatingEvent;
+impl EspEventSerializer for super::HeatingEvent {
+    type Data<'a> = super::HeatingEvent;
 
     fn serialize<F, R>(event: &Self::Data<'_>, f: F) -> R
     where
@@ -54,11 +20,11 @@ impl EspEventSerializer for HeatingEvent {
     }
 }
 
-impl EspEventDeserializer for HeatingEvent {
-    type Data<'a> = HeatingEvent;
+impl EspEventDeserializer for super::HeatingEvent {
+    type Data<'a> = super::HeatingEvent;
 
     fn deserialize<'a>(data: &EspEvent<'a>) -> Self::Data<'a> {
         // Just as easy as serializing
-        *unsafe { data.as_payload::<HeatingEvent>() }
+        *unsafe { data.as_payload::<super::HeatingEvent>() }
     }
 }

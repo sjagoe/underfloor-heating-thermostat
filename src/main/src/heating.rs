@@ -1,8 +1,38 @@
 mod event;
 
-pub use event::HeatingEvent;
+use control::{CoreConfig, ElectricityPrice, PowerState, SetPoint, Temperature};
 
-use control::{CoreConfig, ElectricityPrice, SetPoint, Temperature};
+#[derive(Debug, Clone, Copy)]
+pub enum HeatingPower {
+    TurnOn,
+    TurnOff,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct HeatingEvent {
+    #[allow(dead_code)]
+    power: HeatingPower,
+    #[allow(dead_code)]
+    temperature: Temperature,
+}
+
+impl From<PowerState> for HeatingPower {
+    fn from(power: PowerState) -> HeatingPower {
+        match power {
+            PowerState::On => HeatingPower::TurnOn,
+            PowerState::Off => HeatingPower::TurnOff,
+        }
+    }
+}
+
+impl From<SetPoint> for HeatingEvent {
+    fn from(state: SetPoint) -> HeatingEvent {
+        HeatingEvent {
+            power: HeatingPower::from(state.power),
+            temperature: state.temperature,
+        }
+    }
+}
 
 pub fn get_next_desired_state(
     config: &CoreConfig,
