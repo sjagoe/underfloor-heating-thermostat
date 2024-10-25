@@ -151,10 +151,7 @@ fn main() -> Result<()> {
 
     let now = utils::time::get_datetime()?;
     let electricity_prices =
-        electricity_price::SharedElectricityPrice::fetch(
-            config.server.electricity_price_api,
-            now,
-        )?;
+        electricity_price::SharedElectricityPrice::fetch(config.server.electricity_price_api, now)?;
 
     let timer_service = EspTaskTimerService::new()?;
     let measurement_timer = {

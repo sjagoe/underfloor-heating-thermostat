@@ -1,13 +1,10 @@
 use anyhow::Result;
+use log::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
-use time::{
-    ext::NumericalDuration,
-    PrimitiveDateTime,
-};
 use std::sync::{Arc, Mutex};
-use log::*;
+use time::{ext::NumericalDuration, PrimitiveDateTime};
 
 use crate::http;
 use control::ElectricityPrice;
@@ -56,7 +53,7 @@ impl MultiDayElectricityPrice {
 }
 
 pub struct SharedElectricityPrice {
-    prices: Arc<Mutex<MultiDayElectricityPrice>>
+    prices: Arc<Mutex<MultiDayElectricityPrice>>,
 }
 
 impl SharedElectricityPrice {
@@ -113,7 +110,6 @@ impl SharedElectricityPrice {
         Ok(())
     }
 }
-
 
 impl fmt::Debug for SharedElectricityPrice {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
