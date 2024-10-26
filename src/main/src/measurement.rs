@@ -1,6 +1,5 @@
 use anyhow::Result;
 use esp_idf_svc::{
-    eventloop::EspSystemEventLoop,
     hal::{
         delay,
         gpio::{AnyOutputPin, Output, PinDriver},
@@ -66,17 +65,15 @@ impl MeasurementEvent {
 
     pub fn handle(
         self,
-        sysloop: &EspSystemEventLoop,
         set_points: &CoreConfig,
         price: Option<ElectricityPrice>,
-    ) -> Result<()> {
+    ) -> Option<HeatingEvent> {
         match self.value() {
             Ok(value) => {
-                let heating_event = get_next_desired_state(set_points, value, price);
-                sysloop.post::<HeatingEvent>(&heating_event, delay::BLOCK)?;
+                return Some(get_next_desired_state(set_points, value, price));
             }
             Err(err) => error!("Received bad event {:?}: {:?}", self, err),
         }
-        Ok(())
+        None
     }
 }

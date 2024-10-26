@@ -133,10 +133,11 @@ fn main() -> Result<()> {
         sysloop.subscribe::<MeasurementEvent, _>(move |event| {
             let price = local_prices.current_price();
             warn!("current price {:?}", price);
-            info!("Received event {:?}", event);
-            event
-                .handle(&localloop, &set_points, price)
-                .expect("Failed to handle measurement event");
+            if let Some(heating_event) = event.handle(&set_points, price) {
+                localloop
+                    .post::<HeatingEvent>(&heating_event, delay::BLOCK)
+                    .expect("Failed to post heating event event");
+            }
         })?
     };
 
