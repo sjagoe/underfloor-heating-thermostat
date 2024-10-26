@@ -11,15 +11,19 @@ In order to use our own partition table, we flash manually with `cargo espflash`
 make run
 ```
 
+Currently a custom partition table is not in use while firmware size
+is in flux. Partitioning for OTA updates will be considered later.
+
 ## Planned Features
 
-1. Read hourly electricity price from an influxdb database
+1. Fetch hourly electricity data from a JSON API ([Example data](electricity-price/multiday.json))
 2. Increase heating when price is low, to a limit
 3. Decrease heating when price is high
 4. Turn off heating when price is above a threshold
 5. Always turn on heating when temperature drops below a threshold, regardless of price
 6. Limits on minimum and maximum heating temperature
 7. OLED status display, maybe?
+8. OTA firmware updates
 
 ## Hardware
 
