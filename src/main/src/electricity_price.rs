@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, Mutex};
-use time::{ext::NumericalDuration, PrimitiveDateTime};
+use time::{ext::NumericalDuration, PrimitiveDateTime, Time};
 
 use crate::http;
 use crate::StatusEvent;
@@ -65,6 +65,28 @@ impl SharedElectricityPrice {
             prices: Arc::new(Mutex::new(data)),
         };
         Ok(shared_data)
+    }
+
+    pub fn current_price(&self) -> Option<ElectricityPrice> {
+        let now = crate::utils::time::get_datetime().expect("Failed to get tiem");
+        let key_time = Time::from_hms(now.time().hour(), 0, 0).expect("Failed to construct time");
+        let key = PrimitiveDateTime::new(now.date(), key_time);
+
+        let prices = self.prices.lock().unwrap();
+        let today = prices.today.clone();
+        let tomorrow = &prices.tomorrow.clone();
+
+        if let Some(today) = today {
+            if let Some(price) = today.hourly_price.get(&key) {
+                return Some(*price);
+            }
+        }
+        if let Some(tomorrow) = tomorrow {
+            if let Some(price) = tomorrow.hourly_price.get(&key) {
+                return Some(*price);
+            }
+        }
+        None
     }
 
     pub fn status(&self) -> Option<StatusEvent> {

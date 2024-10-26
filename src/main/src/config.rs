@@ -23,6 +23,7 @@ pub struct ServerConfig {
 #[derive(Copy, Clone, Debug)]
 pub struct Config {
     pub measurement_interval: Duration,
+    // Fixme: This should be moved to a legitimate fallback price member
     pub fake_electricity_price: ElectricityPrice,
     pub set_points: CoreConfig,
     pub wifi: WifiConfig,

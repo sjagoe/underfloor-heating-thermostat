@@ -106,19 +106,6 @@ fn main() -> Result<()> {
         })?
     };
 
-    let _measurement_handler = {
-        // Avoid move of sysloop into closure
-        let localloop = sysloop.clone();
-        let set_points = config.set_points;
-        let price = config.fake_electricity_price;
-        sysloop.subscribe::<MeasurementEvent, _>(move |event| {
-            info!("Received event {:?}", event);
-            event
-                .handle(&localloop, &set_points, price)
-                .expect("Failed to handle measurement event");
-        })?
-    };
-
     let _status_handler = sysloop.subscribe::<StatusEvent, _>(move |event| {
         let colour = RGB8::from(event);
         led.set_pixel(colour).expect("Failed to set LED colour");
@@ -137,6 +124,22 @@ fn main() -> Result<()> {
     let now = utils::time::get_datetime()?;
     let electricity_prices =
         electricity_price::SharedElectricityPrice::fetch(config.server.electricity_price_api, now)?;
+
+    let _measurement_handler = {
+        // Avoid move of sysloop into closure
+        let localloop = sysloop.clone();
+        let set_points = config.set_points;
+        let price = match electricity_prices.current_price() {
+            Some(price) => price,
+            None => config.fake_electricity_price,
+        };
+        sysloop.subscribe::<MeasurementEvent, _>(move |event| {
+            info!("Received event {:?}", event);
+            event
+                .handle(&localloop, &set_points, price)
+                .expect("Failed to handle measurement event");
+        })?
+    };
 
     let _heating_handler = {
         // Avoid move of sysloop into closure
