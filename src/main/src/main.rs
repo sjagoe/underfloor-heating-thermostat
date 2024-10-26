@@ -167,7 +167,6 @@ fn main() -> Result<()> {
             electricity_prices
                 .maybe_update(config.server.electricity_price_api)
                 .expect("Failed to update");
-            warn!("price data {:?}", electricity_prices);
             localloop
                 .post::<TriggerEvent>(&TriggerEvent, delay::BLOCK)
                 .expect("Failed to post trigger");
