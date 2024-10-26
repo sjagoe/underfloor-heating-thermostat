@@ -129,11 +129,12 @@ fn main() -> Result<()> {
         // Avoid move of sysloop into closure
         let localloop = sysloop.clone();
         let set_points = config.set_points;
-        let price = match electricity_prices.current_price() {
-            Some(price) => price,
-            None => config.fake_electricity_price,
-        };
+        let local_prices = electricity_prices.clone();
         sysloop.subscribe::<MeasurementEvent, _>(move |event| {
+            let price = match local_prices.current_price() {
+                Some(price) => price,
+                None => config.fake_electricity_price,
+            };
             info!("Received event {:?}", event);
             event
                 .handle(&localloop, &set_points, price)
