@@ -14,9 +14,7 @@ pub enum HeatingPower {
 
 #[derive(Debug, Clone, Copy)]
 pub struct HeatingEvent {
-    #[allow(dead_code)]
     power: HeatingPower,
-    #[allow(dead_code)]
     temperature: Temperature,
 }
 
@@ -45,15 +43,24 @@ impl HeatingEvent {
     ) -> Result<HeatingPower> {
         match (self.power, enable.is_set_high()) {
             (HeatingPower::TurnOn, false) => {
-                info!("Turning on heating output");
+                info!(
+                    "Turning on heating output; target temperature {:?}",
+                    self.temperature
+                );
                 enable.set_high()?;
             }
             (HeatingPower::TurnOff, true) => {
-                info!("Turning off heating output");
+                info!(
+                    "Turning on heating output; target temperature {:?}",
+                    self.temperature
+                );
                 enable.set_low()?;
             }
             (desired_state, _) => {
-                info!("Heating is already in desired state {:?}", desired_state);
+                info!(
+                    "Heating is already in desired state {:?}; target temperature {:?}",
+                    desired_state, self.temperature
+                );
             }
         }
         Ok(self.power)
