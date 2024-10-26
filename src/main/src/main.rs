@@ -119,21 +119,6 @@ fn main() -> Result<()> {
         })?
     };
 
-    let _heating_handler = {
-        // Avoid move of sysloop into closure
-        let localloop = sysloop.clone();
-        sysloop.subscribe::<HeatingEvent, _>(move |event| {
-            info!("Received event {:?}", event);
-            let power_state = event
-                .switch_heating(&mut heating_enable)
-                .expect("Failed to switch heating");
-            let status = StatusEvent::from(power_state);
-            localloop
-                .post::<StatusEvent>(&status, delay::BLOCK)
-                .expect("Failed to post status event");
-        })?
-    };
-
     let _status_handler = sysloop.subscribe::<StatusEvent, _>(move |event| {
         let colour = RGB8::from(event);
         led.set_pixel(colour).expect("Failed to set LED colour");
@@ -152,6 +137,25 @@ fn main() -> Result<()> {
     let now = utils::time::get_datetime()?;
     let electricity_prices =
         electricity_price::SharedElectricityPrice::fetch(config.server.electricity_price_api, now)?;
+
+    let _heating_handler = {
+        // Avoid move of sysloop into closure
+        let localloop = sysloop.clone();
+        let local_prices = electricity_prices.clone();
+        sysloop.subscribe::<HeatingEvent, _>(move |event| {
+            info!("Received event {:?}", event);
+            let power_state = event
+                .switch_heating(&mut heating_enable)
+                .expect("Failed to switch heating");
+            let status = match local_prices.status() {
+                Some(status) => status,
+                None => StatusEvent::from(power_state),
+            };
+            localloop
+                .post::<StatusEvent>(&status, delay::BLOCK)
+                .expect("Failed to post status event");
+        })?
+    };
 
     let timer_service = EspTaskTimerService::new()?;
     let measurement_timer = {

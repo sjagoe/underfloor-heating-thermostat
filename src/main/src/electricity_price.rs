@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 use time::{ext::NumericalDuration, PrimitiveDateTime};
 
 use crate::http;
+use crate::StatusEvent;
 use control::ElectricityPrice;
 
 #[allow(dead_code)]
@@ -52,6 +53,7 @@ impl MultiDayElectricityPrice {
     }
 }
 
+#[derive(Clone)]
 pub struct SharedElectricityPrice {
     prices: Arc<Mutex<MultiDayElectricityPrice>>,
 }
@@ -63,6 +65,15 @@ impl SharedElectricityPrice {
             prices: Arc::new(Mutex::new(data)),
         };
         Ok(shared_data)
+    }
+
+    pub fn status(&self) -> Option<StatusEvent> {
+        let prices = self.prices.lock().unwrap();
+
+        if prices.today.is_none() {
+            return Some(StatusEvent::MissingData);
+        }
+        None
     }
 
     pub fn maybe_update(&self, url: &str) -> Result<()> {
