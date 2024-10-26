@@ -132,6 +132,7 @@ fn main() -> Result<()> {
         let local_prices = electricity_prices.clone();
         sysloop.subscribe::<MeasurementEvent, _>(move |event| {
             let price = local_prices.current_price();
+            warn!("current price {:?}", price);
             info!("Received event {:?}", event);
             event
                 .handle(&localloop, &set_points, price)
