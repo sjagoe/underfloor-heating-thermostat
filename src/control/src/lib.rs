@@ -33,7 +33,7 @@ impl SetPoint {
     pub fn from_current_state(
         config: &CoreConfig,
         current_temperature: Temperature,
-        current_price: ElectricityPrice,
+        current_price: Option<ElectricityPrice>,
     ) -> SetPoint {
         if current_temperature > config.maximum_temperature {
             return SetPoint {
@@ -51,19 +51,34 @@ impl SetPoint {
             };
         }
 
-        // Electricity price too high
-        if current_price > config.maximum_price {
-            // Turn on heating high to recover low point
-            return SetPoint {
-                power: PowerState::Off,
-                temperature: config.minimum_temperature,
-            };
-        }
+        if let Some(current_price) = current_price {
+            // Electricity price too high
+            if current_price > config.maximum_price {
+                // Turn on heating high to recover low point
+                return SetPoint {
+                    power: PowerState::Off,
+                    temperature: config.minimum_temperature,
+                };
+            }
 
-        let set_temperature = select_temperature(config, current_price);
-        SetPoint {
-            power: PowerState::On,
-            temperature: set_temperature,
+            let set_temperature = select_temperature(config, current_price);
+            SetPoint {
+                power: PowerState::On,
+                temperature: set_temperature,
+            }
+        } else {
+            // We don't have electricity price data; use a conservatve
+            // heating level to reduce cost
+            if current_temperature < config.fallback_minimum_temperature {
+                return SetPoint {
+                    power: PowerState::On,
+                    temperature: config.maximum_temperature,
+                };
+            }
+            SetPoint {
+                power: PowerState::Off,
+                temperature: config.fallback_minimum_temperature,
+            }
         }
     }
 }
@@ -77,6 +92,7 @@ mod tests {
         let electricity_price = ElectricityPrice::new(0.0);
         let settings = CoreConfig {
             minimum_temperature: Temperature::new(15.0),
+            fallback_minimum_temperature: Temperature::new(18.0),
             maximum_temperature: Temperature::new(22.0),
             turbo_temperature: Temperature::new(30.0),
             maximum_price: ElectricityPrice::new(0.30),
@@ -90,6 +106,7 @@ mod tests {
         let electricity_price = ElectricityPrice::new(0.05);
         let settings = CoreConfig {
             minimum_temperature: Temperature::new(15.0),
+            fallback_minimum_temperature: Temperature::new(18.0),
             maximum_temperature: Temperature::new(22.0),
             turbo_temperature: Temperature::new(30.0),
             maximum_price: ElectricityPrice::new(0.30),
@@ -107,6 +124,7 @@ mod tests {
         let electricity_price = ElectricityPrice::new(0.30);
         let settings = CoreConfig {
             minimum_temperature: Temperature::new(15.0),
+            fallback_minimum_temperature: Temperature::new(18.0),
             maximum_temperature: Temperature::new(20.0),
             turbo_temperature: Temperature::new(30.0),
             maximum_price: ElectricityPrice::new(0.30),
@@ -121,12 +139,13 @@ mod tests {
         let current_temperature = Temperature::new(18.0);
         let settings = CoreConfig {
             minimum_temperature: Temperature::new(15.0),
+            fallback_minimum_temperature: Temperature::new(18.0),
             maximum_temperature: Temperature::new(22.0),
             turbo_temperature: Temperature::new(30.0),
             maximum_price: ElectricityPrice::new(0.30),
         };
         let result =
-            SetPoint::from_current_state(&settings, current_temperature, electricity_price);
+            SetPoint::from_current_state(&settings, current_temperature, Some(electricity_price));
 
         assert_eq!(result.power, PowerState::On);
         let min = Temperature::new(20.8);
@@ -151,12 +170,13 @@ mod tests {
         let current_temperature = Temperature::new(18.0);
         let settings = CoreConfig {
             minimum_temperature: Temperature::new(15.0),
+            fallback_minimum_temperature: Temperature::new(18.0),
             maximum_temperature: Temperature::new(22.0),
             turbo_temperature: Temperature::new(30.0),
             maximum_price: ElectricityPrice::new(0.30),
         };
         let result =
-            SetPoint::from_current_state(&settings, current_temperature, electricity_price);
+            SetPoint::from_current_state(&settings, current_temperature, Some(electricity_price));
         let expected = SetPoint {
             power: PowerState::Off,
             temperature: settings.minimum_temperature,
@@ -170,12 +190,13 @@ mod tests {
         let current_temperature = Temperature::new(12.0);
         let settings = CoreConfig {
             minimum_temperature: Temperature::new(15.0),
+            fallback_minimum_temperature: Temperature::new(18.0),
             maximum_temperature: Temperature::new(22.0),
             turbo_temperature: Temperature::new(30.0),
             maximum_price: ElectricityPrice::new(0.30),
         };
         let result =
-            SetPoint::from_current_state(&settings, current_temperature, electricity_price);
+            SetPoint::from_current_state(&settings, current_temperature, Some(electricity_price));
         let expected = SetPoint {
             power: PowerState::On,
             temperature: settings.turbo_temperature,
@@ -189,12 +210,13 @@ mod tests {
         let current_temperature = Temperature::new(45.0);
         let settings = CoreConfig {
             minimum_temperature: Temperature::new(15.0),
+            fallback_minimum_temperature: Temperature::new(18.0),
             maximum_temperature: Temperature::new(22.0),
             turbo_temperature: Temperature::new(30.0),
             maximum_price: ElectricityPrice::new(0.30),
         };
         let result =
-            SetPoint::from_current_state(&settings, current_temperature, electricity_price);
+            SetPoint::from_current_state(&settings, current_temperature, Some(electricity_price));
         let expected = SetPoint {
             power: PowerState::Off,
             temperature: settings.minimum_temperature,
@@ -208,12 +230,13 @@ mod tests {
         let current_temperature = Temperature::new(22.1);
         let settings = CoreConfig {
             minimum_temperature: Temperature::new(15.0),
+            fallback_minimum_temperature: Temperature::new(18.0),
             maximum_temperature: Temperature::new(22.0),
             turbo_temperature: Temperature::new(30.0),
             maximum_price: ElectricityPrice::new(0.30),
         };
         let result =
-            SetPoint::from_current_state(&settings, current_temperature, electricity_price);
+            SetPoint::from_current_state(&settings, current_temperature, Some(electricity_price));
         let expected = SetPoint {
             power: PowerState::Off,
             temperature: settings.minimum_temperature,

@@ -68,7 +68,7 @@ impl MeasurementEvent {
         self,
         sysloop: &EspSystemEventLoop,
         set_points: &CoreConfig,
-        price: ElectricityPrice,
+        price: Option<ElectricityPrice>,
     ) -> Result<()> {
         match self.value() {
             Ok(value) => {

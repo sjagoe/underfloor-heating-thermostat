@@ -131,10 +131,7 @@ fn main() -> Result<()> {
         let set_points = config.set_points;
         let local_prices = electricity_prices.clone();
         sysloop.subscribe::<MeasurementEvent, _>(move |event| {
-            let price = match local_prices.current_price() {
-                Some(price) => price,
-                None => config.fake_electricity_price,
-            };
+            let price = local_prices.current_price();
             info!("Received event {:?}", event);
             event
                 .handle(&localloop, &set_points, price)

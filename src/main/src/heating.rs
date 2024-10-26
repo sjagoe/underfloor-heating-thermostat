@@ -63,7 +63,7 @@ impl HeatingEvent {
 pub fn get_next_desired_state(
     config: &CoreConfig,
     temperature: Temperature,
-    price: ElectricityPrice,
+    price: Option<ElectricityPrice>,
 ) -> HeatingEvent {
     let next_state = SetPoint::from_current_state(config, temperature, price);
 

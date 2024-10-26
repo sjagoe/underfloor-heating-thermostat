@@ -23,8 +23,6 @@ pub struct ServerConfig {
 #[derive(Copy, Clone, Debug)]
 pub struct Config {
     pub measurement_interval: Duration,
-    // Fixme: This should be moved to a legitimate fallback price member
-    pub fake_electricity_price: ElectricityPrice,
     pub set_points: CoreConfig,
     pub wifi: WifiConfig,
     pub server: ServerConfig,
@@ -67,13 +65,15 @@ impl From<&private::TomlConfig> for Config {
             measurement_interval: Duration::from_secs(config.measurement_interval),
             set_points: CoreConfig {
                 minimum_temperature: Temperature::new(config.set_point_minimum_temperature),
+                fallback_minimum_temperature: Temperature::new(
+                    config.set_point_fallback_minimum_temperature,
+                ),
                 maximum_temperature: Temperature::new(config.set_point_maximum_temperature),
                 turbo_temperature: Temperature::new(30.0),
                 maximum_price: ElectricityPrice::new(config.set_point_maximum_price),
             },
             wifi: WifiConfig::from(config),
             server: ServerConfig::from(config),
-            ..Config::default()
         }
     }
 }
@@ -83,9 +83,9 @@ impl Default for Config {
         Config {
             // fixme, we should measure every few minutes at most
             measurement_interval: Duration::from_secs(1),
-            fake_electricity_price: ElectricityPrice::new(0.20),
             set_points: CoreConfig {
                 minimum_temperature: Temperature::new(15.0),
+                fallback_minimum_temperature: Temperature::new(18.0),
                 maximum_temperature: Temperature::new(22.0),
                 turbo_temperature: Temperature::new(30.0),
                 maximum_price: ElectricityPrice::new(0.30),
